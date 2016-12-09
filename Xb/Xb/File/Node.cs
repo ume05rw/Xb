@@ -20,7 +20,6 @@ namespace Xb.File
         /// <remarks></remarks>
         public enum NodeType
         {
-
             /// <summary>
             /// ファイル
             /// </summary>
@@ -61,7 +60,6 @@ namespace Xb.File
         /// <remarks></remarks>
         public enum DateLimitType
         {
-
             /// <summary>
             /// 基準日時より新しいものを抽出する。
             /// </summary>
@@ -76,14 +74,14 @@ namespace Xb.File
         }
 
 
-        private readonly NodeType _type;
+        private readonly Xb.File.Node.NodeType _type;
         private readonly string _baseDirectory;
         private readonly string _name;
-        private readonly Node _parent;
-        private readonly Dictionary<string, Node> _children;
+        private readonly Xb.File.Node _parent;
+        private readonly Dictionary<string, Xb.File.Node> _children;
         private readonly Separator _separator;
-
         private DateTime _updatedate;
+
 
         /// <summary>
         /// ノートタイプ ファイル／ディレクトリ区分
@@ -91,10 +89,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public NodeType Type
-        {
-            get { return this._type; }
-        }
+        public Xb.File.Node.NodeType Type => this._type;
 
 
         /// <summary>
@@ -103,10 +98,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public string BaseDirectory
-        {
-            get { return this._baseDirectory; }
-        }
+        public string BaseDirectory => this._baseDirectory;
 
 
         /// <summary>
@@ -116,10 +108,7 @@ namespace Xb.File
         /// <returns></returns>
         /// <remarks>
         /// </remarks>
-        public string Name
-        {
-            get { return this._name; }
-        }
+        public string Name => this._name;
 
 
         /// <summary>
@@ -128,13 +117,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public string Path
-        {
-            get
-            {
-                return System.IO.Path.Combine(this._baseDirectory, this._name);
-            }
-        }
+        public string Path => System.IO.Path.Combine(this._baseDirectory, this._name);
 
 
         /// <summary>
@@ -143,10 +126,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public Node Parent
-        {
-            get { return this._parent; }
-        }
+        public Xb.File.Node Parent => this._parent;
 
 
         /// <summary>
@@ -155,10 +135,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public Dictionary<string, Node> Children
-        {
-            get { return this._children; }
-        }
+        public Dictionary<string, Xb.File.Node> Children => this._children;
 
 
         /// <summary>
@@ -167,15 +144,9 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public char SeparatorChar
-        {
-            get
-            {
-                return (this._separator == File.Node.Separator.Slash)
-                        ? '/' 
-                        : '\\';
-            }
-        }
+        public char SeparatorChar => (this._separator == Xb.File.Node.Separator.Slash)
+                                        ? '/' 
+                                        : '\\';
 
 
         /// <summary>
@@ -184,10 +155,7 @@ namespace Xb.File
         /// <value></value>
         /// <returns></returns>
         /// <remarks></remarks>
-        public DateTime UpdateDate
-        {
-            get { return this._updatedate; }
-        }
+        public DateTime UpdateDate => this._updatedate;
 
 
         /// <summary>
@@ -197,21 +165,19 @@ namespace Xb.File
         /// <remarks>
         /// 渡し値文字列から、ファイル or ディレクトリを自動判別するコンストラクタ
         /// </remarks>
-
         public Node(string path)
         {
             if (path == null)
                 path = "";
 
-            System.IO.FileInfo fileInfo = null;
-            System.IO.DirectoryInfo directoryInfo = null;
-
             //パス区切り文字を検出する。
-            this._separator = (Separator)(path.LastIndexOf("\\") != -1 ? Separator.Backslash : Separator.Slash);
+            this._separator = (Separator)(path.LastIndexOf("\\", StringComparison.Ordinal) != -1 
+                                            ? Separator.Backslash 
+                                            : Separator.Slash);
 
             if (System.IO.File.Exists(path))
             {
-                fileInfo = new System.IO.FileInfo(path);
+                var fileInfo = new System.IO.FileInfo(path);
                 this._type = NodeType.File;
                 this._name = System.IO.Path.GetFileName(path);
                 this._baseDirectory = System.IO.Path.GetDirectoryName(path);
@@ -219,9 +185,9 @@ namespace Xb.File
             }
             else if (System.IO.Directory.Exists(path))
             {
-                directoryInfo = new System.IO.DirectoryInfo(path);
+                var directoryInfo = new System.IO.DirectoryInfo(path);
                 this._type = NodeType.Directory;
-                System.IO.DirectoryInfo dir = new System.IO.DirectoryInfo(path);
+                var dir = new System.IO.DirectoryInfo(path);
                 this._name = dir.Name;
                 this._baseDirectory = dir.Parent == null
                                         ? ""
@@ -232,7 +198,7 @@ namespace Xb.File
             }
             else
             {
-                Xb.Util.Out("File.Node.New: 渡し値パスの存在が確認できません。");
+                Xb.Util.Out("Xb.File.Node.New: 渡し値パスの存在が確認できません。");
                 throw new ArgumentException("渡し値パスの存在が確認できません。");
             }
 
@@ -254,27 +220,25 @@ namespace Xb.File
             if (path == null)
                 path = "";
 
-            int tmpIdx = 0;
-
             //パス区切り文字を検出する。
-            this._separator = (Separator)(path.LastIndexOf("\\") != -1 ? Separator.Backslash : Separator.Slash);
+            this._separator = (Xb.File.Node.Separator)(path.LastIndexOf("\\", StringComparison.Ordinal) != -1 
+                                ? Xb.File.Node.Separator.Backslash 
+                                : Xb.File.Node.Separator.Slash);
 
-            this._type = (NodeType)(isDirectory ? NodeType.Directory : NodeType.File);
+            this._type = (Xb.File.Node.NodeType)(isDirectory 
+                                                    ? Xb.File.Node.NodeType.Directory 
+                                                    : Xb.File.Node.NodeType.File);
             this._updatedate = updateDate;
 
             if (!string.IsNullOrEmpty(path))
             {
-                tmpIdx = path.LastIndexOf(this.SeparatorChar);
+                var tmpIdx = path.LastIndexOf(this.SeparatorChar);
+
                 this._name = path.Substring(tmpIdx + 1);
 
-                if (tmpIdx != -1)
-                {
-                    this._baseDirectory = path.Substring(0, tmpIdx + 1);
-                }
-                else
-                {
-                    this._baseDirectory = "";
-                }
+                this._baseDirectory = tmpIdx != -1 
+                                        ? path.Substring(0, tmpIdx + 1) 
+                                        : "";
             }
             else
             {
@@ -282,7 +246,7 @@ namespace Xb.File
                 this._baseDirectory = "";
             }
 
-            this._children = new Dictionary<string, Node>();
+            this._children = new Dictionary<string, Xb.File.Node>();
 
             //App.Out("new-Node path: " & path & "  / BaseDir: " & Me._baseDirectory & "  / Name: " & Me._name)
         }
@@ -294,7 +258,7 @@ namespace Xb.File
         /// <param name="child"></param>
         /// <remarks></remarks>
 
-        public void AddChild(Node child)
+        public void AddChild(Xb.File.Node child)
         {
             //_children.Add(child.Name, child) '参照セットする。Dictionary.AddはByval定義のようなので。
             _children.Add(child.Name, null);
@@ -307,17 +271,16 @@ namespace Xb.File
         /// </summary>
         /// <returns></returns>
         /// <remarks></remarks>
-        public List<File.Node> GetAllChildren()
+        public List<Xb.File.Node> GetAllChildren()
         {
-            List<File.Node> result = new List<File.Node>();
-            foreach (Node child in this.Children.Values)
+            var result = new List<Xb.File.Node>();
+
+            foreach (Xb.File.Node child in this.Children.Values)
             {
                 result.Add(child);
 
-                if ((child.Type == File.Node.NodeType.Directory))
-                {
+                if (child.Type == Xb.File.Node.NodeType.Directory)
                     result.AddRange(child.GetAllChildren());
-                }
             }
 
             return result;
@@ -330,17 +293,18 @@ namespace Xb.File
         /// <param name="matchString"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public Node Find(string matchString)
+        public Xb.File.Node Find(string matchString)
         {
-            File.Node tmpNode = null;
+            Xb.File.Node tmpNode = null;
+
             //先に直下ノードを走査する。
-            foreach (Node child in this.Children.Values)
+            foreach (Xb.File.Node child in this.Children.Values)
             {
-                if (child.Path.IndexOf(matchString) != -1)
+                if (child.Path.IndexOf(matchString, StringComparison.Ordinal) != -1)
                     return child;
             }
             //直下ノードで合致が無いとき、子ノードの子を再帰処理する。
-            foreach (Node child in this.Children.Values)
+            foreach (Xb.File.Node child in this.Children.Values)
             {
                 tmpNode = child.Find(matchString);
                 if (tmpNode != null)
@@ -358,20 +322,17 @@ namespace Xb.File
         /// <param name="matchString"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public List<File.Node> FindAll(string matchString)
+        public List<Xb.File.Node> FindAll(string matchString)
         {
-            List<File.Node> result = new List<File.Node>();
-            foreach (Node child in this.Children.Values)
-            {
-                if (child.Path.IndexOf(matchString) != -1)
-                {
-                    result.Add(child);
-                }
+            var result = new List<Xb.File.Node>();
 
-                if (child.Type == File.Node.NodeType.Directory)
-                {
+            foreach (Xb.File.Node child in this.Children.Values)
+            {
+                if (child.Path.IndexOf(matchString, StringComparison.Ordinal) != -1)
+                    result.Add(child);
+
+                if (child.Type == Xb.File.Node.NodeType.Directory)
                     result.AddRange(child.FindAll(matchString));
-                }
             }
 
             return result;
@@ -385,36 +346,66 @@ namespace Xb.File
         /// <param name="limitType"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public List<File.Node> FindAll(DateTime datetime, DateLimitType limitType = DateLimitType.Newer)
+        public List<Xb.File.Node> FindAll(DateTime datetime, DateLimitType limitType = DateLimitType.Newer)
         {
-            List<File.Node> result = new List<File.Node>();
-            if (datetime == null)
-                return result;
+            var result = new List<Xb.File.Node>();
 
-            foreach (Node child in this.Children.Values)
+            foreach (Xb.File.Node child in this.Children.Values)
             {
-                if (child.UpdateDate != null)
+                switch (limitType)
                 {
-                    switch (limitType)
-                    {
-                        case DateLimitType.Newer:
-                            if ((child.UpdateDate > datetime))
-                                result.Add(child);
-                            break;
-                        case DateLimitType.Older:
-                            if ((child.UpdateDate <= datetime))
-                                result.Add(child);
-                            break;
-                    }
+                    case DateLimitType.Newer:
+                        if (child.UpdateDate > datetime)
+                            result.Add(child);
+                        break;
+                    case DateLimitType.Older:
+                        if (child.UpdateDate <= datetime)
+                            result.Add(child);
+                        break;
                 }
 
-                if (child.Type == File.Node.NodeType.Directory)
-                {
+                if (child.Type == Xb.File.Node.NodeType.Directory)
                     result.AddRange(child.FindAll(datetime, limitType));
-                }
             }
 
             return result;
+        }
+
+
+        /// <summary>
+        /// 起点パス上のディレクトリから、指定文字列とパスが合致した
+        /// 最初のファイルのNodeオブジェクトを返す。
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="matchString"></param>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public static Xb.File.Node Find(string path, string matchString)
+        {
+            var root = default(Xb.File.Node);
+
+            if (!System.IO.Directory.Exists(path))
+            {
+                path = System.IO.Path.GetDirectoryName(path);
+                if (!System.IO.Directory.Exists(path))
+                    return null;
+            }
+
+            root = Xb.File.NodeList.GetNodeList(path).RootNode;
+            foreach (Xb.File.Node child in root.Children.Values)
+            {
+                if (child.Type == Xb.File.Node.NodeType.Directory)
+                {
+                    //要素がディレクトリのとき、そのディレクトリ以下の要素を再帰取得する。
+                    var grandson = Xb.File.Node.Find(child.Path, matchString);
+                    if (grandson != null)
+                        return grandson;
+                }
+            }
+
+            GC.Collect();
+
+            return null;
         }
     }
 }
