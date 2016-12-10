@@ -40,6 +40,10 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data.Linq" />
     <Reference Include="System.XML" />
+    <Reference Include="Xb.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Xb.Core.1.0.1\lib\net45\Xb.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -62,11 +66,7 @@
     <Compile Include="Xb\Db\MsSqlTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Xb.Core\Xb.Core.csproj">
-      <Project>{291b5f04-5ae4-4e58-98e5-dab20b1996d4}</Project>
-      <Name>Xb.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Xb\Xb.FW45.csproj">
+    <ProjectReference Include="..\Xb.FW45\Xb.FW45.csproj">
       <Project>{5FF48627-2281-46AF-9F66-E5AE56DF0CAE}</Project>
       <Name>Xb.FW45</Name>
     </ProjectReference>
@@ -75,6 +75,7 @@
     <None Include="MsSqlTest.orderedtest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
