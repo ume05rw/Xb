@@ -66,9 +66,9 @@
       <Project>{291b5f04-5ae4-4e58-98e5-dab20b1996d4}</Project>
       <Name>Xb.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Xb\Xb.csproj">
+    <ProjectReference Include="..\Xb\Xb.FW45.csproj">
       <Project>{5FF48627-2281-46AF-9F66-E5AE56DF0CAE}</Project>
-      <Name>Xb</Name>
+      <Name>Xb.FW45</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
