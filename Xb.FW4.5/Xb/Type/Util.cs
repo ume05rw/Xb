@@ -80,7 +80,7 @@ namespace Xb.Type
                     //注) .Net仕様上、Date型とDateTime型は同じもの。
                     //https://msdn.microsoft.com/ja-jp/library/47zceaw7.aspx
                 }
-                else if (object.ReferenceEquals(type, typeof(Str)))
+                else if (object.ReferenceEquals(type, typeof(String)))
                 {
                     value = Convert.ToString(value);
                 }
@@ -485,7 +485,7 @@ namespace Xb.Type
         /// <param name="value"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public static bool InArray(ArrayList array, string value)
+        public static bool InArray(System.Collections.ArrayList array, string value)
         {
             if (array == null)
                 return false;
@@ -743,7 +743,7 @@ namespace Xb.Type
         /// <param name="value"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public static bool InArrayMatch(ArrayList array, string value)
+        public static bool InArrayMatch(System.Collections. ArrayList array, string value)
         {
             if (array == null || value == null)
                 return false;

@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{12D3C984-F508-47B8-9E82-99AF6146729D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Xb</RootNamespace>
+    <AssemblyName>Xb</AssemblyName>
+    <DefaultLanguage>ja-JP</DefaultLanguage>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{786C830F-07A1-408B-BD7F-6EE04809D6DB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <TargetFrameworkVersion>v5.0</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- A reference to the entire .NET Framework is automatically included -->
+    <Folder Include="Xb\Device\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Xb.FW4.5\Properties\AssemblyInfo.cs">
+      <Link>Properties\AssemblyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\App\Logger.cs">
+      <Link>Xb\App\Logger.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Db\DbBase.cs">
+      <Link>Xb\Db\DbBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.Column.cs">
+      <Link>Xb\Db\Model.Column.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.cs">
+      <Link>Xb\Db\Model.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.Error.cs">
+      <Link>Xb\Db\Model.Error.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Db\MsSql.cs">
+      <Link>Xb\Db\MsSql.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\File\Node.cs">
+      <Link>Xb\File\Node.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\File\NodeList.cs">
+      <Link>Xb\File\NodeList.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Net\Ftp.cs">
+      <Link>Xb\Net\Ftp.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Net\HttpListener.cs">
+      <Link>Xb\Net\HttpListener.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Net\Mail.cs">
+      <Link>Xb\Net\Mail.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Net\Tcp.cs">
+      <Link>Xb\Net\Tcp.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Net\Util.cs">
+      <Link>Xb\Net\Util.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.FW4.5\Xb\Type\Util.cs">
+      <Link>Xb\Type\Util.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="project.json" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.FW4.5", "Xb.FW4.5\Xb.FW4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestsXb", "TestsXb\TestsXb.csproj", "{A231F639-08C3-4200-AC51-D6015A30769B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.STD1.3", "Xb.STD1.3\Xb.STD1.3.csproj", "{12D3C984-F508-47B8-9E82-99AF6146729D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{A231F639-08C3-4200-AC51-D6015A30769B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A231F639-08C3-4200-AC51-D6015A30769B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A231F639-08C3-4200-AC51-D6015A30769B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12D3C984-F508-47B8-9E82-99AF6146729D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12D3C984-F508-47B8-9E82-99AF6146729D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12D3C984-F508-47B8-9E82-99AF6146729D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12D3C984-F508-47B8-9E82-99AF6146729D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
