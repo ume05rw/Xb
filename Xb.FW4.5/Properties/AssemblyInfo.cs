@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更してください。
 [assembly: AssemblyTitle("Xb")]
-[assembly: AssemblyDescription("Ready to Xamarin & .NET Core, Simple Library.")]
+[assembly: AssemblyDescription("Ready to Xamarin, Simple Library(.NetFW4.5) for .Net")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Do-Be's")]
 [assembly: AssemblyProduct("Xb")]
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // すべての値を指定するか、下のように '*' を使ってビルドおよびリビジョン番号を 
 // 既定値にすることができます:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
