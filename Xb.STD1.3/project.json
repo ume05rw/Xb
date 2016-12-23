@@ -10,6 +10,7 @@
     "System.Net.Mail": "1.0.0-rtm-00002",
     "System.Net.NameResolution": "4.3.0",
     "System.Net.Requests": "4.3.0",
+    "System.Net.Sockets": "4.1.0",
     "Xb.Core": "1.0.1"
   },
   "frameworks": {

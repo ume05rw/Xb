@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using System.Text;
@@ -196,7 +198,6 @@ namespace Xb.Net
         /// <param name="ipAddress"></param>
         /// <param name="port"></param>
         /// <remarks></remarks>
-
         public void Connect(System.Net.IPAddress ipAddress, int port)
         {
             //IPアドレスが不正のとき、異常終了。
@@ -220,35 +221,13 @@ namespace Xb.Net
                                              , SocketType.Stream
                                              , ProtocolType.Tcp);
 
-                var ev1 = new SocketAsyncEventArgs();
-                ev1.RemoteEndPoint = endPoint;
-                ev1.Completed += (sender, e) =>
-                {
-                    Xb.Util.Out($"Xb.Net.Tcp.Connect: ConnectAsync Completed: {e.SocketError}");  
-                };
-                this._socketLocal.ConnectAsync(ev1);
-
+                var ev = new SocketAsyncEventArgs();
+                ev.RemoteEndPoint = endPoint;
+                ev.Completed += this.OnCompleted;
+                this._socketLocal.ConnectAsync(ev);
 
                 //client = new Client(this._socketLocal);
                 //this._socketLocal.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
-
-                var ev2 = new SocketAsyncEventArgs();
-                ev2.RemoteEndPoint = this._socketLocal.RemoteEndPoint;
-                ev2.UserToken = null;
-                ev2.Completed += (sender, e) =>
-                {
-                    Xb.Util.Out($"Xb.Net.Tcp.Connect: RecieveAsync Completed: {e.SocketError}");
-
-                    if (e.SocketError == SocketError.Success)
-                    {
-                        Xb.Util.Out($"Recieved: {Encoding.UTF8.GetString(e.Buffer, e.Offset, e.BytesTransferred)}");
-                    }
-                    else
-                    {
-                        Xb.Util.Out($"Recieve Failure: {e.SocketError.ToString()}");
-                    }
-                };
-                this._socketLocal.ReceiveAsync(ev2);
             }
             catch (Exception ex)
             {
@@ -258,6 +237,115 @@ namespace Xb.Net
 
             //接続完了イベントをレイズする。
             this.FireEvent("Connected", new object[] { this._socketLocal });
+        }
+
+
+        public void Listen(int port)
+        {
+            //渡し値ポートがTCP範囲外のとき、異常終了。
+            if (port < 0 | 65335 < port)
+            {
+                Xb.Util.Out("渡し値ポートが不正です。");
+                throw new ArgumentException("渡し値ポートが不正です。");
+            }
+
+            //ソケットを生成する。
+            //IPv4, v6両対応の全ローカルアドレスをListenする
+            //http://dobon.net/vb/dotnet/internet/udpclient.html
+            //http://dobon.net/vb/dotnet/internet/udpclient.html
+            var endPoint = new System.Net.IPEndPoint(System.Net.IPAddress.IPv6Any, port);
+            this._socketLocal = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily
+                                                            , System.Net.Sockets.SocketType.Stream
+                                                            , System.Net.Sockets.ProtocolType.Tcp);
+            this._socketLocal.SetSocketOption(System.Net.Sockets.SocketOptionLevel.IPv6
+                                            , System.Net.Sockets.SocketOptionName.IPv6Only
+                                            , 0);
+
+            //サービスポートにバインドする。
+            try
+            {
+                this._socketLocal.Bind(endPoint);
+            }
+            catch (Exception ex)
+            {
+                //バインド失敗時、ポートが使用中と思われる。エラー応答する。
+                this._socketLocal = null;
+                Xb.Util.Out("ソケットオープンに失敗しました：" + ex.Message);
+                throw new ArgumentException("ソケットオープンに失敗しました：" + ex.Message);
+            }
+
+            //サービスを開始する。
+            this._socketLocal.Listen(1000);
+
+            var ev = new SocketAsyncEventArgs();
+            ev.Completed += OnCompleted;
+            this._socketLocal.AcceptAsync(ev);
+        }
+
+
+
+        private void OnCompleted(object sender, SocketAsyncEventArgs ev)
+        {
+            var socket = (Socket) sender;
+            Debug.WriteLine(String.Format("Async operation completed: {0}; Error: {1}; " 
+                                          , ev.LastOperation
+                                          , ev.SocketError));
+
+            switch (ev.LastOperation)
+            {
+                case SocketAsyncOperation.Connect:
+
+                    var evConnect = new SocketAsyncEventArgs();
+                    evConnect.Completed += this.OnCompleted;
+                    evConnect.SetBuffer(new byte[1024], 0, 1024);
+                    ev.ConnectSocket.ReceiveAsync(evConnect);
+
+                    break;
+                case SocketAsyncOperation.Receive:
+                    if (ev.SocketError != SocketError.Success)
+                    {
+                        socket.Dispose();
+                        return;
+                    }
+
+                    if (ev.BytesTransferred == 0)
+                    {
+                        socket.Dispose();
+                        ev.Dispose();
+                        return;
+                    }
+
+                    var asText = Encoding.ASCII.GetString(ev.Buffer, ev.Offset, ev.BytesTransferred);
+                    Debug.WriteLine(String.Format("Received: {0} bytes: \"{1}\"", ev.BytesTransferred, asText));
+
+                    socket.ReceiveAsync(ev);
+
+                    break;
+                case SocketAsyncOperation.Send:
+                    break;
+                case SocketAsyncOperation.Accept:
+
+                    //Continue Accepting
+                    var clientSocket = ev.AcceptSocket;
+                    ev.AcceptSocket = null;
+                    socket.AcceptAsync(ev);
+
+                    //Set Recieve event for Accepted socket.
+                    var newEv = new SocketAsyncEventArgs();
+                    newEv.Completed += this.OnCompleted;
+                    newEv.SetBuffer(new byte[1024], 0, 1024);
+                    clientSocket.ReceiveAsync(newEv);
+
+                    break;
+                case SocketAsyncOperation.Disconnect:
+                    socket.Dispose();
+                    ev.Dispose();
+
+                    break;
+                default:
+
+                    break;
+            }
         }
 
 
