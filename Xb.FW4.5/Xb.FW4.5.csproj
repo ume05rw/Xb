@@ -45,21 +45,15 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Xb\App\Logger.cs" />
-    <Compile Include="Xb\Db\DbBase.cs" />
-    <Compile Include="Xb\Db\Model.Column.cs" />
-    <Compile Include="Xb\Db\Model.cs" />
-    <Compile Include="Xb\Db\Model.Error.cs" />
-    <Compile Include="Xb\Db\MsSql.cs" />
     <Compile Include="Xb\File\Node.cs" />
     <Compile Include="Xb\File\NodeList.cs" />
-    <Compile Include="Xb\Net\Ftp.cs" />
-    <Compile Include="Xb\Net\HttpListener.cs" />
     <Compile Include="Xb\Net\Mail.cs" />
     <Compile Include="Xb\Net\Tcp.cs" />
     <Compile Include="Xb\Net\Util.cs" />
     <Compile Include="Xb\Type\Util.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Xb\Db\" />
     <Folder Include="Xb\Device\" />
   </ItemGroup>
   <ItemGroup>

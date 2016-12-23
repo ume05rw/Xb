@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
 
 namespace Xb.Type
 {
@@ -10,107 +13,6 @@ namespace Xb.Type
     /// <remarks></remarks>
     public class Util
     {
-        /// <summary>
-        /// 型のキャストが可能かどうかを検証する。
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        /// <remarks>
-        /// コマンドライン引数のキャストを目的としているため、ごく基本的な型を対象とする。
-        /// </remarks>
-        public static bool IsConvertable(object value, System.Type type)
-        {
-            try
-            {
-                if (object.ReferenceEquals(type, typeof(bool)))
-                {
-                    if (value.ToString().ToLower() == "true")
-                    {
-                        value = true;
-                    }
-                    else if (value.ToString().ToLower() == "false")
-                    {
-                        value = false;
-                    }
-                    else
-                    {
-                        value = Convert.ToBoolean(value);
-                    }
-                }
-                else if (object.ReferenceEquals(type, typeof(Int16)))
-                {
-                    value = Convert.ToInt16(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(Int32)))
-                {
-                    value = Convert.ToInt32(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(Int64)))
-                {
-                    value = Convert.ToInt64(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(UInt16)))
-                {
-                    value = Convert.ToUInt16(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(UInt32)))
-                {
-                    value = Convert.ToUInt32(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(UInt64)))
-                {
-                    value = Convert.ToUInt64(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(Decimal)))
-                {
-                    value = Convert.ToDecimal(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(Single)))
-                {
-                    value = Convert.ToSingle(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(Double)))
-                {
-                    value = Convert.ToDouble(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(DateTime)))
-                {
-                    value = (DateTime)value;
-                    //注) .Net仕様上、Date型とDateTime型は同じもの。
-                    //https://msdn.microsoft.com/ja-jp/library/47zceaw7.aspx
-                }
-                else if (object.ReferenceEquals(type, typeof(String)))
-                {
-                    value = Convert.ToString(value);
-                }
-                else if (object.ReferenceEquals(type, typeof(char)))
-                {
-                    value = Convert.ToChar(value);
-                }
-
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-
-        /// <summary>
-        /// 値がNull(Nothing) or DbNull.Value か否か
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool IsNull(object value)
-        {
-            return (value == null || value == DBNull.Value);
-        }
-
-
         /// <summary>
         /// 文字列変数のNull変換
         /// </summary>
@@ -238,522 +140,349 @@ namespace Xb.Type
 
 
         /// <summary>
-        /// 渡し値の日付型変数が、入力済みかNullかを判定する。
+        /// インスタンスが保持するプロパティ／フィールド値をコンソールに書き出す。
         /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool IsDateNull(System.DateTime value)
+        /// <param name="obj"></param>
+        public static void DumpObjectStatus(object obj)
         {
-            //if (value == null)
-            //    return true;
-            //if (DBNull.Value == value)
-            //    return true;
-
-            if (value < DateTime.Parse("1868/09/08"))
-                return true;
-
-            return false;
+            var msg = new StringBuilder();
+            msg.AppendFormat("[Type: {0} ]\r\n", obj.GetType());
+            msg.AppendFormat("{0}\r\n", string.Join("\r\n", Xb.Type.Util.GetPropertyString(obj)));
+            msg.AppendFormat("{0}\r\n", string.Join("\r\n", Xb.Type.Util.GetFieldString(obj)));
+            Xb.Util.OutHighlighted(msg.ToString());
         }
 
-
         /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
+        /// インスタンスのメソッドをコンソールに書き出す。
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(string[] array, string value)
+        /// <param name="obj"></param>
+        public static void DumpObjectMethod(object obj)
         {
-            if (array == null 
-                || System.Array.IndexOf(array, value) == -1)
-                return false;
-
-            return true;
+            var msg = new StringBuilder();
+            msg.AppendFormat("[Type: {0} ]\r\n", obj.GetType());
+            msg.AppendFormat("{0}\r\n", string.Join("\r\n", Xb.Type.Util.GetMethodString(obj)));
+            Xb.Util.OutHighlighted(msg.ToString());
         }
 
+        /// <summary>
+        /// インスタンスのイベントをコンソールに書き出す。
+        /// </summary>
+        /// <param name="obj"></param>
+        public static void DumpObjectEvent(object obj)
+        {
+            var msg = new StringBuilder();
+            msg.AppendFormat("[Type: {0} ]\r\n", obj.GetType());
+            msg.AppendFormat("{0}\r\n", string.Join("\r\n", Xb.Type.Util.GetEventString(obj)));
+            Xb.Util.OutHighlighted(msg.ToString());
+        }
+
+        ///// <summary>
+        ///// インスタンスの型をコンソールに書き出す。
+        ///// </summary>
+        ///// <param name="obj"></param>
+        //public static void DumpObjectTypes(object obj, bool withinInterfaces = false)
+        //{
+        //    var msg = new StringBuilder();
+        //    msg.AppendFormat("[Type: {0} ]\r\n", obj.GetType());
+        //    msg.AppendFormat("{0}\r\n", string.Join("\r\n", Xb.Type.Util.GetTypes(obj, withinInterfaces)));
+        //    Xb.Util.OutHighlighted(msg.ToString());
+        //}
+
+        ///// <summary>
+        ///// 渡し値の型名／インタフェース名を、継承関係を遡って取得する。
+        ///// </summary>
+        ///// <param name="obj"></param>
+        ///// <param name="withinInterfaces"></param>
+        ///// <returns></returns>
+        //public static string[] GetTypes(object obj, bool withinInterfaces = false)
+        //{
+        //    var result = new List<string>();
+        //    result.AddRange(Xb.Type.Util.GetTypes(obj.GetType(), withinInterfaces));
+        //    result.Sort();
+        //    return result.ToArray();
+        //}
+
+        ///// <summary>
+        ///// 渡し値の型名／インタフェース名を、継承関係を遡って取得する。
+        ///// </summary>
+        ///// <param name="type"></param>
+        ///// <param name="withinInterfaces"></param>
+        ///// <returns></returns>
+        //public static string[] GetTypes(System.Type type, bool withinInterfaces = false)
+        //{
+        //    var result = new List<string>();
+        //    result.Add(type.FullName);
+
+        //    type.
+
+        //    if (type.BaseType != null)
+        //    {
+        //        var bases = Xb.Type.Util.GetTypes(type.BaseType);
+        //        result.AddRange(bases.AsEnumerable().Where(val => !result.Contains(val)));
+
+        //        if (withinInterfaces)
+        //        {
+        //            var baseInterfaces = Xb.Type.Util.GetInterfaces(type.BaseType);
+        //            result.AddRange(baseInterfaces.AsEnumerable().Where(val => !result.Contains(val)));
+        //        }
+        //    }
+
+        //    if (withinInterfaces)
+        //    {
+        //        foreach (var intfc in type.GetInterfaces())
+        //        {
+        //            result.Add(intfc.FullName);
+        //            var bases = Xb.Type.Util.GetInterfaces(intfc);
+        //            result.AddRange(bases.AsEnumerable().Where(val => !result.Contains(val)));
+        //        }
+        //    }
+        //    result.Sort();
+        //    return result.ToArray();
+        //}
+
+        ///// <summary>
+        ///// 渡し値のインタフェース名を、継承関係を遡って取得する。
+        ///// </summary>
+        ///// <param name="type"></param>
+        ///// <returns></returns>
+        //public static string[] GetInterfaces(System.Type type)
+        //{
+        //    var result = new List<string>();
+        //    result.AddRange(type.GetInterfaces().Select(val => val.FullName).ToArray());
+
+        //    foreach (System.Type @interface in type.GetInterfaces())
+        //    {
+        //        result.Add(@interface.FullName);
+
+        //        if (@interface.BaseType != null)
+        //        {
+        //            var bases = Xb.Type.Util.GetInterfaces(@interface);
+        //            result.AddRange(bases.Where(val => result.Contains(val)));
+        //        }
+        //    }
+        //    result.Sort();
+        //    return result.ToArray();
+        //}
 
         /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
+        /// プロパティ名／値のリストを改行付き文字列で取得する。
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
+        /// <param name="obj"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(short[] array, string value)
+        public static string[] GetPropertyString(object obj)
         {
-            if (array == null)
-                return false;
+            var result = new List<string>();
+            var type = obj.GetType();
 
-            foreach (short val in array)
+            //プロパティの一覧を取得する
+            PropertyInfo[] properties = type.GetRuntimeProperties().ToArray();
+
+
+            var row = new StringBuilder();
+            foreach (PropertyInfo p in properties)
             {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(int[] array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (int val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(long[] array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (long val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(decimal[] array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (decimal val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(List<string> array, string value)
-        {
-            if (array == null || !array.Contains(value))
-                return false;
-            return true;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(List<short> array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (short val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(List<int> array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (int val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(List<long> array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (long val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(List<decimal> array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (decimal val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(Hashtable array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (object val in array.Values)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列の中に指定値が存在しているか否かを判定する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArray(System.Collections.ArrayList array, string value)
-        {
-            if (array == null)
-                return false;
-
-            foreach (object val in array)
-            {
-                if (val.ToString() == value)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(string[] array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (string val in array)
-            {
-                if(val == null)
+                //特別な名前のメソッドは表示しない
+                if (p.IsSpecialName)
                     continue;
 
-                if (val.IndexOf(value) != -1)
-                    return true;
+                row.Clear();
+
+                //アクセシビリティを表示
+                row.Append("public ");
+
+                //p.MemberType
+                //戻り値を表示
+                if (p.PropertyType == typeof(void))
+                    row.Append("void ");
+                else
+                    row.Append(p.PropertyType.ToString());
+                row.Append(" ");
+
+                //メソッド名を表示
+                row.Append("property ");
+                row.Append(p.Name);
+
+                try
+                {
+                    row.Append($" = {p.GetValue(obj, null)} ");
+                }
+                catch (Exception)
+                {
+                    row.Append(" = [Fail] ");
+                }
+
+                result.Add(row.ToString());
             }
-            return false;
+            return result.ToArray();
         }
 
-
         /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
+        /// フィールド名／値のリストを改行付き文字列で取得する。
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
+        /// <param name="obj"></param>
+        /// <param name="goDeep"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(short[] array, string value)
+        public static string[] GetFieldString(object obj)
         {
-            if (array == null || value == null)
-                return false;
+            var result = new List<string>();
+            var type = obj.GetType();
 
-            foreach (short val in array)
+            //フィールドの一覧を取得する
+            FieldInfo[] fields = type.GetRuntimeFields().ToArray();
+
+            var row = new StringBuilder();
+            foreach (FieldInfo m in fields)
             {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(int[] array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (int val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(long[] array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (long val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(decimal[] array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (decimal val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(List<string> array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (string val in array)
-            {
-                if (val == null)
+                //特別な名前のメソッドは表示しない
+                if (m.IsSpecialName)
                     continue;
 
-                if (val.IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
+                row.Clear();
 
+                //アクセシビリティを表示
+                if (m.IsPublic)
+                    row.Append("public ");
+                if (m.IsPrivate)
+                    row.Append("private ");
+                if (m.IsAssembly)
+                    row.Append("internal ");
+                if (m.IsFamily)
+                    row.Append("protected ");
+                if (m.IsFamilyOrAssembly)
+                    row.Append("internal protected ");
+
+                //その他修飾子を表示
+                if (m.IsStatic)
+                    row.Append("static ");
+
+                //戻り値を表示
+                if (m.FieldType == typeof(void))
+                    row.Append("void ");
+                else
+                    row.Append(m.FieldType.ToString() + " ");
+
+                //メソッド名を表示
+                row.Append("field ");
+                row.Append(m.Name);
+
+                try
+                {
+                    row.AppendFormat(" = {0}", m.GetValue(obj));
+                }
+                catch (Exception)
+                {
+                    row.Append(" = [Fail] ");
+                }
+
+                result.Add(row.ToString());
+            }
+
+            return result.ToArray();
+        }
 
         /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
+        /// メソッドのリストを改行付き文字列で取得する。
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
+        /// <param name="obj"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(List<short> array, string value)
+        public static string[] GetMethodString(object obj)
         {
-            if (array == null || value == null)
-                return false;
+            var result = new List<string>();
+            var type = obj.GetType();
 
-            foreach (short val in array)
+            //メソッドの一覧を取得する
+            MethodInfo[] methods = type.GetRuntimeMethods().ToArray();
+
+            var row = new StringBuilder();
+            foreach (MethodInfo m in methods)
             {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
+                //特別な名前のメソッドは表示しない
+                if (m.IsSpecialName)
+                    continue;
 
+                row.Clear();
+
+                //アクセシビリティを表示
+                if (m.IsPublic)
+                    row.Append("public ");
+                if (m.IsPrivate)
+                    row.Append("private ");
+                if (m.IsAssembly)
+                    row.Append("internal ");
+                if (m.IsFamily)
+                    row.Append("protected ");
+                if (m.IsFamilyOrAssembly)
+                    row.Append("internal protected ");
+
+                //その他修飾子を表示
+                if (m.IsStatic)
+                    row.Append("static ");
+                if (m.IsAbstract)
+                    row.Append("abstract ");
+                else if (m.IsVirtual)
+                    row.Append("virtual ");
+
+                //戻り値を表示
+                if (m.ReturnType == typeof(void))
+                    row.Append("void ");
+                else
+                    row.Append(m.ReturnType.ToString() + " ");
+
+                //メソッド名を表示
+                row.Append(m.Name);
+
+                //パラメータを表示
+                ParameterInfo[] prms = m.GetParameters();
+                row.Append("(");
+                for (int i = 0; i < prms.Length; i++)
+                {
+                    ParameterInfo p = prms[i];
+                    row.Append(p.ParameterType.ToString() + " " + p.Name);
+                    if (prms.Length - 1 > i)
+                        row.Append(", ");
+                }
+                row.Append(")");
+
+                result.Add(row.ToString());
+            }
+
+            return result.ToArray();
+        }
 
         /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
+        /// イベントのリストを改行付き文字列で取得する。
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
+        /// <param name="obj"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(List<int> array, string value)
+        public static string[] GetEventString(object obj)
         {
-            if (array == null || value == null)
-                return false;
+            var result = new List<string>();
+            var type = obj.GetType();
 
-            foreach (int val in array)
+            //イベントの一覧を取得する
+            EventInfo[] events = type.GetRuntimeEvents().ToArray();
+
+            var row = new StringBuilder();
+            foreach (EventInfo m in events)
             {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
+                //特別な名前のメソッドは表示しない
+                if (m.IsSpecialName)
+                    continue;
+
+                row.Clear();
+
+                //アクセシビリティを表示
+                row.Append("public ");
+
+                //メソッド名を表示
+                row.Append("event ");
+                row.Append(m.Name);
+
+                result.Add(row.ToString());
             }
-            return false;
+
+            return result.ToArray();
         }
 
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(List<long> array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (long val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(List<decimal> array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (decimal val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(Hashtable array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (object val in array.Values)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 配列中の各値を文字列化し、渡し値に部分合致するものが存在するか否かを検証する。
-        /// </summary>
-        /// <param name="array"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public static bool InArrayMatch(System.Collections. ArrayList array, string value)
-        {
-            if (array == null || value == null)
-                return false;
-
-            foreach (object val in array)
-            {
-                if (val.ToString().IndexOf(value) != -1)
-                    return true;
-            }
-            return false;
-        }
     }
 }

@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Threading.Tasks;
+using System.Net.Sockets;
+using System.Text;
 
 namespace Xb.Net
 {
@@ -44,8 +47,9 @@ namespace Xb.Net
 
             public RemoteEventArgs(byte[] bytes, System.Net.Sockets.Socket remoteSocket)
             {
-                if ((bytes == null))
+                if (bytes == null)
                     bytes = new byte[]{};
+
                 this.Bytes = bytes;
                 this.RemoteSocket = remoteSocket;
             }
@@ -59,6 +63,7 @@ namespace Xb.Net
 
 
         private System.Net.Sockets.Socket _socketLocal;
+
         /// <summary>
         /// コンストラクタ
         /// </summary>
@@ -152,10 +157,8 @@ namespace Xb.Net
                 throw new ArgumentException("渡し値ポートが不正です。");
             }
 
-            string[] ipAddressSegments = ipAddress.Split((".")[0]);
-            int segInt = 0;
-            int i = 0;
-            byte[] ipBytes = new byte[4];
+            var ipAddressSegments = ipAddress.Split((".")[0]);
+            var ipBytes = new byte[4];
 
             //IPアドレスの書式チェック
             //"."で分割したとき、4つに分かれていないとき、異常終了。
@@ -166,14 +169,15 @@ namespace Xb.Net
             }
 
             //分割したセグメントがそれぞれ0～255の範囲を超えているとき異常終了。
-            for (i = 0; i <= 3; i++)
+            for (var i = 0; i <= 3; i++)
             {
-                if ((!int.TryParse(ipAddressSegments[i], out segInt)))
+                var segInt = 0;
+                if (!int.TryParse(ipAddressSegments[i], out segInt))
                 {
                     Xb.Util.Out("渡し値アドレスが不正です。");
                     throw new ArgumentException("渡し値アドレスが不正です。");
                 }
-                if ((segInt < 0 || 255 < segInt))
+                if (segInt < 0 || 255 < segInt)
                 {
                     Xb.Util.Out("渡し値アドレスが不正です。");
                     throw new ArgumentException("渡し値アドレスが不正です。");
@@ -198,28 +202,53 @@ namespace Xb.Net
             //IPアドレスが不正のとき、異常終了。
             if (ipAddress == null)
             {
-                Xb.Util.Out("渡し値IPアドレスが不正です。");
-                throw new ArgumentException("渡し値IPアドレスが不正です。");
+                Xb.Util.Out("Xb.Net.Tcp.Connect: passing-ipAddress null");
+                throw new ArgumentNullException(nameof(ipAddress), "Xb.Net.Tcp.Connect: passing-ipAddress null");
             }
 
             //渡し値ポートがTCP範囲外のとき、異常終了。
             if (port < 0 | 65335 < port)
             {
-                Xb.Util.Out("渡し値ポートが不正です。");
-                throw new ArgumentException("渡し値ポートが不正です。");
+                Xb.Util.Out("Xb.Net.Tcp.Connect: passing-port out of TCP-Port range.");
+                throw new ArgumentOutOfRangeException(nameof(port), "Xb.Net.Tcp.Connect: passing-port out of TCP-Port range.");
             }
-
-            System.Net.IPEndPoint endPoint = null;
-            Client client = null;
 
             try
             {
-                endPoint = new System.Net.IPEndPoint(ipAddress, port);
-                this._socketLocal = new System.Net.Sockets.Socket(ipAddress.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
-                this._socketLocal.Connect(endPoint);
+                var endPoint = new System.Net.IPEndPoint(ipAddress, port);
+                this._socketLocal = new Socket(ipAddress.AddressFamily
+                                             , SocketType.Stream
+                                             , ProtocolType.Tcp);
 
-                client = new Client(this._socketLocal);
-                this._socketLocal.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+                var ev1 = new SocketAsyncEventArgs();
+                ev1.RemoteEndPoint = endPoint;
+                ev1.Completed += (sender, e) =>
+                {
+                    Xb.Util.Out($"Xb.Net.Tcp.Connect: ConnectAsync Completed: {e.SocketError}");  
+                };
+                this._socketLocal.ConnectAsync(ev1);
+
+
+                //client = new Client(this._socketLocal);
+                //this._socketLocal.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+
+                var ev2 = new SocketAsyncEventArgs();
+                ev2.RemoteEndPoint = this._socketLocal.RemoteEndPoint;
+                ev2.UserToken = null;
+                ev2.Completed += (sender, e) =>
+                {
+                    Xb.Util.Out($"Xb.Net.Tcp.Connect: RecieveAsync Completed: {e.SocketError}");
+
+                    if (e.SocketError == SocketError.Success)
+                    {
+                        Xb.Util.Out($"Recieved: {Encoding.UTF8.GetString(e.Buffer, e.Offset, e.BytesTransferred)}");
+                    }
+                    else
+                    {
+                        Xb.Util.Out($"Recieve Failure: {e.SocketError.ToString()}");
+                    }
+                };
+                this._socketLocal.ReceiveAsync(ev2);
             }
             catch (Exception ex)
             {
@@ -228,234 +257,233 @@ namespace Xb.Net
             }
 
             //接続完了イベントをレイズする。
-            this.FireEvent("Connected", new object[] { client.Socket });
+            this.FireEvent("Connected", new object[] { this._socketLocal });
         }
 
 
-        /// <summary>
-        /// リモートデータ受信時の処理
-        /// </summary>
-        /// <param name="ar"></param>
-        /// <remarks></remarks>
+        ///// <summary>
+        ///// リモートデータ受信時の処理
+        ///// </summary>
+        ///// <param name="ar"></param>
+        ///// <remarks></remarks>
+        //private void Recieve(IAsyncResult ar)
+        //{
+        //    Client client = (Client)ar.AsyncState;
+        //    byte[] recieveBytes = null;
+        //    int length = 0;
 
-        private void Recieve(IAsyncResult ar)
-        {
-            Client client = (Client)ar.AsyncState;
-            byte[] recieveBytes = null;
-            int length = 0;
+        //    //受信データ長を取得する。
+        //    try
+        //    {
+        //        length = client.Socket.EndReceive(ar);
+        //    }
+        //    catch (ObjectDisposedException)
+        //    {
+        //        //クライアントソケットが既に破棄されているとき、何もしない。
+        //        return;
+        //    }
+        //    catch (Exception)
+        //    {
+        //        length = 0;
+        //    }
 
-            //受信データ長を取得する。
-            try
-            {
-                length = client.Socket.EndReceive(ar);
-            }
-            catch (ObjectDisposedException)
-            {
-                //クライアントソケットが既に破棄されているとき、何もしない。
-                return;
-            }
-            catch (Exception)
-            {
-                length = 0;
-            }
+        //    //切断通知か否かを検証する。
+        //    if ((length <= 0))
+        //    {
+        //        //データが無いとき、切断されたと見做してリモートによる切断イベントをレイズする。
+        //        client.Socket.Close();
+        //        this.FireEvent("Disconnected", new object[] {});
+        //        return;
+        //    }
 
-            //切断通知か否かを検証する。
-            if ((length <= 0))
-            {
-                //データが無いとき、切断されたと見做してリモートによる切断イベントをレイズする。
-                client.Socket.Close();
-                this.FireEvent("Disconnected", new object[] {});
-                return;
-            }
+        //    //受診したデータを蓄積する。
+        //    if (client.Buffer != null)
+        //    {
+        //        //クライアント用ストリームが存在しないとき、生成する。
+        //        if (client.Stream == null)
+        //            client.Stream = new System.IO.MemoryStream();
 
-            //受診したデータを蓄積する。
-            if (client.Buffer != null)
-            {
-                //クライアント用ストリームが存在しないとき、生成する。
-                if (client.Stream == null)
-                    client.Stream = new System.IO.MemoryStream();
+        //        //クライアント用ストリームへ、バッファ内容を一括書き込みする。
+        //        //第二引数に注意：ストリーム上のオフセットでなく、バッファByte配列上のオフセットになる。
+        //        client.Stream.Write(client.Buffer, 0, length);
+        //    }
 
-                //クライアント用ストリームへ、バッファ内容を一括書き込みする。
-                //第二引数に注意：ストリーム上のオフセットでなく、バッファByte配列上のオフセットになる。
-                client.Stream.Write(client.Buffer, 0, length);
-            }
+        //    //ソケットオブジェクト側の受信サイズプロパティの値が 0 のとき、
+        //    //一連のストリーム受信が完了したと見做す。
+        //    if (client.Socket.Available == 0)
+        //    {
+        //        recieveBytes = client.Stream.ToArray();
 
-            //ソケットオブジェクト側の受信サイズプロパティの値が 0 のとき、
-            //一連のストリーム受信が完了したと見做す。
-            if (client.Socket.Available == 0)
-            {
-                recieveBytes = client.Stream.ToArray();
+        //        //クライアント用ストリームを破棄、更新する。
+        //        client.Stream.Close();
+        //        client.Stream = new System.IO.MemoryStream();
 
-                //クライアント用ストリームを破棄、更新する。
-                client.Stream.Close();
-                client.Stream = new System.IO.MemoryStream();
+        //        //受信データが存在するとき、データ取得イベントをレイズする
+        //        if ((recieveBytes.Length > 0))
+        //        {
+        //            this.FireEvent("Recieved", new object[] {
+        //                recieveBytes,
+        //                client.Socket
+        //            });
+        //        }
+        //    }
 
-                //受信データが存在するとき、データ取得イベントをレイズする
-                if ((recieveBytes.Length > 0))
-                {
-                    this.FireEvent("Recieved", new object[] {
-                        recieveBytes,
-                        client.Socket
-                    });
-                }
-            }
+        //    //クライアントソケットで再度データ待ち受けを開始する。
+        //    try
+        //    {
+        //        client.Socket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+        //    }
+        //    catch (Exception)
+        //    {
+        //        //RSTフラグによる切断のとき、BeginRecieveに失敗する。
+        //        client.Socket.Close();
+        //        //リモートによる切断イベントをレイズする。
+        //        this.FireEvent("Disconnected", new object[] {});
+        //    }
 
-            //クライアントソケットで再度データ待ち受けを開始する。
-            try
-            {
-                client.Socket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
-            }
-            catch (Exception)
-            {
-                //RSTフラグによる切断のとき、BeginRecieveに失敗する。
-                client.Socket.Close();
-                //リモートによる切断イベントをレイズする。
-                this.FireEvent("Disconnected", new object[] {});
-            }
-
-        }
-
-
-        /// <summary>
-        /// 渡し値アドレスでサービスを開始する。
-        /// </summary>
-        /// <param name="ipAddress"></param>
-        /// <param name="port"></param>
-        /// <remarks></remarks>
-        public void Listen(string ipAddress, int port)
-        {
-            //IPアドレスが渡されていないとき、もしくはポートがTCP範囲外のとき、異常終了する。
-            if ((ipAddress == null || port < 0 || 65335 < port))
-            {
-                Xb.Util.Out("渡し値アドレス、もしくはポートが不正です。");
-                throw new ArgumentException("渡し値アドレス、もしくはポートが不正です。");
-            }
-
-            System.Net.IPAddress[] addresses = null;
-            int i = 0;
-            int addIdx = 0;
-
-            //渡し値アドレスの存在チェック
-            addIdx = -1;
-            addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
-            for (i = 0; i <= addresses.Length - 1; i++)
-            {
-                if (addresses[i].ToString() == ipAddress)
-                {
-                    addIdx = i;
-                    break;
-                }
-            }
-            if (addIdx == -1)
-            {
-                Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-                throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-            }
-
-            this.Listen(addresses[addIdx], port);
-        }
+        //}
 
 
-        /// <summary>
-        /// 渡し値アドレスでサービスを開始する。
-        /// </summary>
-        /// <param name="ipAddress"></param>
-        /// <param name="port"></param>
-        /// <remarks></remarks>
-        public void Listen(System.Net.IPAddress ipAddress, int port)
-        {
-            //IPアドレスが不正のとき、異常終了。
-            if ((ipAddress == null))
-            {
-                Xb.Util.Out("渡し値IPアドレスが不正です。");
-                throw new ArgumentException("渡し値IPアドレスが不正です。");
-            }
+        ///// <summary>
+        ///// 渡し値アドレスでサービスを開始する。
+        ///// </summary>
+        ///// <param name="ipAddress"></param>
+        ///// <param name="port"></param>
+        ///// <remarks></remarks>
+        //public void Listen(string ipAddress, int port)
+        //{
+        //    //IPアドレスが渡されていないとき、もしくはポートがTCP範囲外のとき、異常終了する。
+        //    if ((ipAddress == null || port < 0 || 65335 < port))
+        //    {
+        //        Xb.Util.Out("渡し値アドレス、もしくはポートが不正です。");
+        //        throw new ArgumentException("渡し値アドレス、もしくはポートが不正です。");
+        //    }
 
-            //渡し値ポートがTCP範囲外のとき、異常終了。
-            if ((port < 0 | 65335 < port))
-            {
-                Xb.Util.Out("渡し値ポートが不正です。");
-                throw new ArgumentException("渡し値ポートが不正です。");
-            }
+        //    System.Net.IPAddress[] addresses = null;
+        //    int i = 0;
+        //    int addIdx = 0;
 
-            System.Net.IPAddress[] addresses = null;
-            int i = 0;
-            int addIdx = 0;
-            System.Net.IPEndPoint endPoint = null;
+        //    //渡し値アドレスの存在チェック
+        //    addIdx = -1;
+        //    addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
+        //    for (i = 0; i <= addresses.Length - 1; i++)
+        //    {
+        //        if (addresses[i].ToString() == ipAddress)
+        //        {
+        //            addIdx = i;
+        //            break;
+        //        }
+        //    }
+        //    if (addIdx == -1)
+        //    {
+        //        Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
+        //        throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
+        //    }
 
-            //渡し値アドレスの存在チェック
-            addIdx = -1;
-            addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
-            for (i = 0; i <= addresses.Length - 1; i++)
-            {
-                if ((addresses[i].ToString() == ipAddress.ToString()))
-                {
-                    addIdx = i;
-                    break; // TODO: might not be correct. Was : Exit For
-                }
-            }
-            if ((addIdx == -1))
-            {
-                Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-                throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-            }
+        //    this.Listen(addresses[addIdx], port);
+        //}
 
-            //ソケットを生成する。
-            endPoint = new System.Net.IPEndPoint(ipAddress, port);
-            this._socketLocal = null;
-            this._socketLocal = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
 
-            //サービスポートにバインドする。
-            try
-            {
-                this._socketLocal.Bind(endPoint);
-            }
-            catch (Exception ex)
-            {
-                //バインド失敗時、ポートが使用中と思われる。エラー応答する。
-                this._socketLocal = null;
-                Xb.Util.Out("ソケットオープンに失敗しました：" + ex.Message);
-                throw new ArgumentException("ソケットオープンに失敗しました：" + ex.Message);
-            }
+        ///// <summary>
+        ///// 渡し値アドレスでサービスを開始する。
+        ///// </summary>
+        ///// <param name="ipAddress"></param>
+        ///// <param name="port"></param>
+        ///// <remarks></remarks>
+        //public void Listen(System.Net.IPAddress ipAddress, int port)
+        //{
+        //    //IPアドレスが不正のとき、異常終了。
+        //    if ((ipAddress == null))
+        //    {
+        //        Xb.Util.Out("渡し値IPアドレスが不正です。");
+        //        throw new ArgumentException("渡し値IPアドレスが不正です。");
+        //    }
 
-            //サービスを開始する。
-            this._socketLocal.Listen(1000);
-            this._socketLocal.BeginAccept(Accept, this._socketLocal);
+        //    //渡し値ポートがTCP範囲外のとき、異常終了。
+        //    if ((port < 0 | 65335 < port))
+        //    {
+        //        Xb.Util.Out("渡し値ポートが不正です。");
+        //        throw new ArgumentException("渡し値ポートが不正です。");
+        //    }
 
-        }
+        //    System.Net.IPAddress[] addresses = null;
+        //    int i = 0;
+        //    int addIdx = 0;
+        //    System.Net.IPEndPoint endPoint = null;
 
-        /// <summary>
-        /// サービスポートへの接続を受け付ける。
-        /// </summary>
-        /// <param name="ar"></param>
-        /// <remarks></remarks>
+        //    //渡し値アドレスの存在チェック
+        //    addIdx = -1;
+        //    addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
+        //    for (i = 0; i <= addresses.Length - 1; i++)
+        //    {
+        //        if ((addresses[i].ToString() == ipAddress.ToString()))
+        //        {
+        //            addIdx = i;
+        //            break; // TODO: might not be correct. Was : Exit For
+        //        }
+        //    }
+        //    if ((addIdx == -1))
+        //    {
+        //        Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
+        //        throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
+        //    }
 
-        private void Accept(IAsyncResult ar)
-        {
-            System.Net.Sockets.Socket localSocket = null;
-            System.Net.Sockets.Socket remoteSocket = null;
-            Client client = null;
+        //    //ソケットを生成する。
+        //    endPoint = new System.Net.IPEndPoint(ipAddress, port);
+        //    this._socketLocal = null;
+        //    this._socketLocal = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
 
-            try
-            {
-                localSocket = (System.Net.Sockets.Socket)ar.AsyncState;
-                remoteSocket = localSocket.EndAccept(ar);
+        //    //サービスポートにバインドする。
+        //    try
+        //    {
+        //        this._socketLocal.Bind(endPoint);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //バインド失敗時、ポートが使用中と思われる。エラー応答する。
+        //        this._socketLocal = null;
+        //        Xb.Util.Out("ソケットオープンに失敗しました：" + ex.Message);
+        //        throw new ArgumentException("ソケットオープンに失敗しました：" + ex.Message);
+        //    }
 
-                //接続したソケットでデータ受付を開始する。
-                client = new Client(remoteSocket);
-                remoteSocket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+        //    //サービスを開始する。
+        //    this._socketLocal.Listen(1000);
+        //    this._socketLocal.BeginAccept(Accept, this._socketLocal);
 
-                //新たにサービス受付用ソケットを生成、開始する。
-                localSocket.BeginAccept(new AsyncCallback(Accept), localSocket);
-            }
-            catch (Exception)
-            {
-                return;
-            }
+        //}
 
-            //接続完了イベントをレイズする。
-            this.FireEvent("Connected", new object[] { client.Socket });
-        }
+        ///// <summary>
+        ///// サービスポートへの接続を受け付ける。
+        ///// </summary>
+        ///// <param name="ar"></param>
+        ///// <remarks></remarks>
+
+        //private void Accept(IAsyncResult ar)
+        //{
+        //    System.Net.Sockets.Socket localSocket = null;
+        //    System.Net.Sockets.Socket remoteSocket = null;
+        //    Client client = null;
+
+        //    try
+        //    {
+        //        localSocket = (System.Net.Sockets.Socket)ar.AsyncState;
+        //        remoteSocket = localSocket.EndAccept(ar);
+
+        //        //接続したソケットでデータ受付を開始する。
+        //        client = new Client(remoteSocket);
+        //        remoteSocket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+
+        //        //新たにサービス受付用ソケットを生成、開始する。
+        //        localSocket.BeginAccept(new AsyncCallback(Accept), localSocket);
+        //    }
+        //    catch (Exception)
+        //    {
+        //        return;
+        //    }
+
+        //    //接続完了イベントをレイズする。
+        //    this.FireEvent("Connected", new object[] { client.Socket });
+        //}
 
 
         /// <summary>
@@ -534,10 +562,8 @@ namespace Xb.Net
                 {
                     if (this._socketLocal == null)
                         return;
-                    if (!this._socketLocal.Connected)
-                        return;
 
-                    this._socketLocal.Close();
+                    this._socketLocal.Dispose();
                 }
             }
             this._disposedValue = true;

@@ -36,6 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- A reference to the entire .NET Framework is automatically included -->
+    <Folder Include="Xb\Db\" />
     <Folder Include="Xb\Device\" />
   </ItemGroup>
   <ItemGroup>
@@ -45,35 +46,11 @@
     <Compile Include="..\Xb.FW4.5\Xb\App\Logger.cs">
       <Link>Xb\App\Logger.cs</Link>
     </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Db\DbBase.cs">
-      <Link>Xb\Db\DbBase.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.Column.cs">
-      <Link>Xb\Db\Model.Column.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.cs">
-      <Link>Xb\Db\Model.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Db\Model.Error.cs">
-      <Link>Xb\Db\Model.Error.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Db\MsSql.cs">
-      <Link>Xb\Db\MsSql.cs</Link>
-    </Compile>
     <Compile Include="..\Xb.FW4.5\Xb\File\Node.cs">
       <Link>Xb\File\Node.cs</Link>
     </Compile>
     <Compile Include="..\Xb.FW4.5\Xb\File\NodeList.cs">
       <Link>Xb\File\NodeList.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Net\Ftp.cs">
-      <Link>Xb\Net\Ftp.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Net\HttpListener.cs">
-      <Link>Xb\Net\HttpListener.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.FW4.5\Xb\Net\Mail.cs">
-      <Link>Xb\Net\Mail.cs</Link>
     </Compile>
     <Compile Include="..\Xb.FW4.5\Xb\Net\Tcp.cs">
       <Link>Xb\Net\Tcp.cs</Link>
