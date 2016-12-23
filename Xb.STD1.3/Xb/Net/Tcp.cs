@@ -1,334 +1,464 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace Xb.Net
 {
-
     /// <summary>
+    /// TCP Socket Client / Server
     /// TCP接続管理クラス
     /// </summary>
     /// <remarks>
-    /// ※注意※ 送受信データサイズは最大で 1GByte まで。
     /// </remarks>
     public class Tcp : IDisposable
     {
         /// <summary>
-        /// クライアントソケットのデータ保持クラス
+        /// Socket-Role type
+        /// ソケット役割
         /// </summary>
-        /// <remarks></remarks>
-        private class Client
+        public enum RoleType
         {
+            /// <summary>
+            /// for Client
+            /// クライアント
+            /// </summary>
+            Client,
 
-            public const int BufferLength = 1024;
-            public readonly System.Net.Sockets.Socket Socket;
-            public readonly byte[] Buffer;
+            /// <summary>
+            /// for Server
+            /// サーバ
+            /// </summary>
+            Server
+        }
 
-            public System.IO.MemoryStream Stream;
+        /// <summary>
+        /// Object-set for async timeout
+        /// 非同期メソッドタイムアウト用保持データ一式
+        /// </summary>
+        private class TimerSet : IDisposable
+        {
+            public Timer Timer { get; set; }
+            public EndPoint EndPoint { get; set; }
+            public SocketAsyncEventArgs EventArgs { get; set; }
 
-            public Client(System.Net.Sockets.Socket socket)
+            public void Dispose()
             {
-                this.Socket = socket;
-                this.Buffer = new byte[BufferLength + 1];
-                this.Stream = new System.IO.MemoryStream();
+                this.Timer?.Dispose();
+                this.EndPoint = null;
             }
         }
 
+        /// <summary>
+        /// Network-Action event arguments
+        /// 通信アクションイベント引数クラス
+        /// </summary>
+        public class ActionEventArgs : EventArgs
+        {
+            public EndPoint EndPoint { get; private set; }
+
+            public ActionEventArgs(EndPoint endPoint)
+            {
+                this.EndPoint = endPoint;
+            }
+        }
 
         /// <summary>
+        /// Data-Recieve event arguments
         /// データ受信イベント引数クラス
         /// </summary>
         /// <remarks></remarks>
-        public class RemoteEventArgs : EventArgs
+        public class RecieveEventArgs : ActionEventArgs
         {
-            public readonly byte[] Bytes;
-            public readonly System.Net.Sockets.Socket RemoteSocket;
+            public byte[] Bytes { get; private set; }
 
-            public RemoteEventArgs(byte[] bytes, System.Net.Sockets.Socket remoteSocket)
+            public RecieveEventArgs(byte[] bytes
+                , EndPoint endPoint)
+                : base(endPoint)
             {
-                if (bytes == null)
-                    bytes = new byte[]{};
-
-                this.Bytes = bytes;
-                this.RemoteSocket = remoteSocket;
+                this.Bytes = bytes ?? new byte[] {};
             }
         }
 
 
-        public delegate void RecieveEventHandler(object sender, RemoteEventArgs e);
+        /// <summary>
+        /// Network-timeout Exception
+        /// 通信タイムアウト例外
+        /// </summary>
+        public class TimeoutException : Exception
+        {
+            public EndPoint EndPoint { get; private set; }
+            public SocketAsyncOperation Operation { get; private set; }
+
+            public TimeoutException(EndPoint endPoint
+                , SocketAsyncOperation operation
+                , string message = "")
+                : base(message)
+            {
+                this.EndPoint = endPoint;
+                this.Operation = operation;
+            }
+        }
+
+
+        /// <summary>
+        /// Connected Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public delegate void ConnectEventHandler(object sender, ActionEventArgs e);
+        public event ConnectEventHandler Connected;
+
+        /// <summary>
+        /// Accept Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public delegate void AcceptEventHandler(object sender, ActionEventArgs e);
+        public event AcceptEventHandler Accepted;
+
+        /// <summary>
+        /// Disconnected Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public delegate void DisconnectEventHandler(object sender, ActionEventArgs e);
+        public event DisconnectEventHandler Disconnected;
+
+        /// <summary>
+        /// Sended Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public delegate void SendEventHandler(object sender, ActionEventArgs e);
+        public event SendEventHandler Sended;
+
+        /// <summary>
+        /// Recieved Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public delegate void RecieveEventHandler(object sender, RecieveEventArgs e);
         public event RecieveEventHandler Recieved;
-        public event EventHandler Connected;
-        public event EventHandler Disconnected;
-
-
-        private System.Net.Sockets.Socket _socketLocal;
-
-        /// <summary>
-        /// コンストラクタ
-        /// </summary>
-        /// <remarks></remarks>
-        public Tcp()
-        {
-        }
 
 
         /// <summary>
-        /// イベントをレイズする。
+        /// Socket-Role type
+        /// ソケット役割
         /// </summary>
-        /// <param name="eventType"></param>
-        /// <param name="aryArgs"></param>
-        /// <remarks></remarks>
+        public RoleType Role { get; private set; } = RoleType.Client;
 
-        private void FireEvent(object eventType, object aryArgs)
+        /// <summary>
+        /// Timeout (millisec)
+        /// </summary>
+        public int Timeout { get; set; } = 30000;
+
+        /// <summary>
+        /// my own socket
+        /// ローカル側(自分自身)のソケット
+        /// </summary>
+        private System.Net.Sockets.Socket _localSocket;
+
+        /// <summary>
+        /// Destination's socket
+        /// リモート側のソケット配列
+        /// </summary>
+        private Dictionary<EndPoint, Socket> _remoteSockets
+            = new Dictionary<EndPoint, Socket>();
+
+        /// <summary>
+        /// timer for async methods
+        /// 非同期メソッドタイムアウト処理用タイマー
+        /// </summary>
+        private Dictionary<SocketAsyncEventArgs, TimerSet> _timeoutTimers
+            = new Dictionary<SocketAsyncEventArgs, TimerSet>();
+
+
+
+        /// <summary>
+        /// Destinations's EndPoints list
+        /// 接続先EndPointオブジェクトリスト
+        /// </summary>
+        public EndPoint[] Remotes
         {
-            object[] args = new object[] {};
-            System.Net.Sockets.Socket socket = null;
-            byte[] bytes = null;
-
-            if (aryArgs != null)
+            get
             {
-                args = (object[])aryArgs;
-            }
-
-            switch (eventType.ToString())
-            {
-                case "Connected":
-                    if (args.Length > 0)
-                        socket = (System.Net.Sockets.Socket)args[0];
-                    if (Connected != null)
-                    {
-                        Connected(this, new RemoteEventArgs(null, socket));
-                    }
-
-                    break;
-                case "Disconnected":
-                    if (Disconnected != null)
-                    {
-                        Disconnected(this, new EventArgs());
-                    }
-
-                    break;
-                case "Recieved":
-                    if (args.Length > 0)
-                        bytes = (byte[])args[0];
-                    if (args.Length > 1)
-                        socket = (System.Net.Sockets.Socket)args[1];
-                    try
-                    {
-                        if (Recieved != null)
-                        {
-                            Recieved(this, new RemoteEventArgs(bytes, socket));
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Xb.Util.Out("Net.Tcp.RaiseEventOnUiThread: イベント用パラメータパースに失敗しました。");
-                        throw new ArgumentException("イベント用パラメータパースに失敗しました。");
-                    }
-
-                    break;
-                default:
-                    break;
-                    //何もしない。
+                return this._remoteSockets
+                    .Select(pair => pair.Value.RemoteEndPoint)
+                    .ToArray();
             }
         }
 
 
         /// <summary>
+        /// Constructor - client mode
+        /// コンストラクタ - クライアントモード
+        /// </summary>
+        /// <param name="connectIpAddress"></param>
+        /// <param name="connectPort"></param>
+        /// <remarks></remarks>
+        public Tcp(string connectIpAddress
+                 , int connectPort)
+        {
+            //IPアドレスがnull
+            if (connectIpAddress == null)
+            {
+                Xb.Util.Out("Xb.Net.Tcp.Constructor: ip-address null");
+                throw new ArgumentException("Xb.Net.Tcp.Constructor: ip-address null");
+            }
+
+            //ポートがTCP範囲外
+            if (connectPort < 0 || 65335 < connectPort)
+            {
+                Xb.Util.Out($"Xb.Net.Tcp.Constructor: tcp-port out of range [{connectPort}]");
+                throw new ArgumentOutOfRangeException(nameof(connectPort),
+                    $"Xb.Net.Tcp.Constructor: tcp-port out of range [{connectPort}]");
+            }
+
+            IPAddress ipAddress;
+
+            //IPアドレスのパース失敗
+            if (!IPAddress.TryParse(connectIpAddress, out ipAddress))
+            {
+                Xb.Util.Out($"Xb.Net.Tcp.Constructor: invalid ip-address [{connectIpAddress}]");
+                throw new ArgumentException($"Xb.Net.Tcp.Constructor: invalid ip-address [{connectIpAddress}]");
+            }
+
+            this.Connect(ipAddress, connectPort);
+        }
+
+
+        /// <summary>
+        /// Constructor - client mode
+        /// コンストラクタ - クライアントモード
+        /// </summary>
+        /// <param name="connectIpAddress"></param>
+        /// <param name="connectPort"></param>
+        /// <remarks></remarks>
+        public Tcp(System.Net.IPAddress connectIpAddress
+                 , int connectPort)
+        {
+            this.Connect(connectIpAddress, connectPort);
+        }
+
+
+        /// <summary>
+        /// Connect to remote
         /// リモートへ接続する。
         /// </summary>
         /// <param name="ipAddress"></param>
         /// <param name="port"></param>
         /// <remarks></remarks>
-        public void Connect(string ipAddress, int port)
+        private void Connect(System.Net.IPAddress ipAddress
+                           , int port)
         {
-            //IPアドレスが不正のとき、異常終了。
-            if (ipAddress == null)
-            {
-                Xb.Util.Out("渡し値IPアドレスが不正です。");
-                throw new ArgumentException("渡し値IPアドレスが不正です。");
-            }
-
-            //IPアドレスが渡されていないとき、もしくはポートがTCP範囲外のとき、異常終了する。
-            if (port < 0 || 65335 < port)
-            {
-                Xb.Util.Out("渡し値ポートが不正です。");
-                throw new ArgumentException("渡し値ポートが不正です。");
-            }
-
-            var ipAddressSegments = ipAddress.Split((".")[0]);
-            var ipBytes = new byte[4];
-
-            //IPアドレスの書式チェック
-            //"."で分割したとき、4つに分かれていないとき、異常終了。
-            if (ipAddressSegments.Length != 4)
-            {
-                Xb.Util.Out("渡し値アドレスが不正です。");
-                throw new ArgumentException("渡し値アドレスが不正です。");
-            }
-
-            //分割したセグメントがそれぞれ0～255の範囲を超えているとき異常終了。
-            for (var i = 0; i <= 3; i++)
-            {
-                var segInt = 0;
-                if (!int.TryParse(ipAddressSegments[i], out segInt))
-                {
-                    Xb.Util.Out("渡し値アドレスが不正です。");
-                    throw new ArgumentException("渡し値アドレスが不正です。");
-                }
-                if (segInt < 0 || 255 < segInt)
-                {
-                    Xb.Util.Out("渡し値アドレスが不正です。");
-                    throw new ArgumentException("渡し値アドレスが不正です。");
-                }
-                ipBytes[i] = BitConverter.GetBytes(segInt)[0];
-            }
-
-            this.Connect(new System.Net.IPAddress(ipBytes), port);
-
-        }
-
-
-        /// <summary>
-        /// リモートへ接続する。
-        /// </summary>
-        /// <param name="ipAddress"></param>
-        /// <param name="port"></param>
-        /// <remarks></remarks>
-        public void Connect(System.Net.IPAddress ipAddress, int port)
-        {
-            //IPアドレスが不正のとき、異常終了。
-            if (ipAddress == null)
-            {
-                Xb.Util.Out("Xb.Net.Tcp.Connect: passing-ipAddress null");
-                throw new ArgumentNullException(nameof(ipAddress), "Xb.Net.Tcp.Connect: passing-ipAddress null");
-            }
-
-            //渡し値ポートがTCP範囲外のとき、異常終了。
-            if (port < 0 | 65335 < port)
-            {
-                Xb.Util.Out("Xb.Net.Tcp.Connect: passing-port out of TCP-Port range.");
-                throw new ArgumentOutOfRangeException(nameof(port), "Xb.Net.Tcp.Connect: passing-port out of TCP-Port range.");
-            }
-
             try
             {
-                var endPoint = new System.Net.IPEndPoint(ipAddress, port);
-                this._socketLocal = new Socket(ipAddress.AddressFamily
-                                             , SocketType.Stream
-                                             , ProtocolType.Tcp);
+                this._localSocket = new Socket(ipAddress.AddressFamily
+                    , SocketType.Stream
+                    , ProtocolType.Tcp);
 
-                var ev = new SocketAsyncEventArgs();
-                ev.RemoteEndPoint = endPoint;
+                var ev = new SocketAsyncEventArgs
+                {
+                    RemoteEndPoint = new System.Net.IPEndPoint(ipAddress, port)
+                };
+
                 ev.Completed += this.OnCompleted;
-                this._socketLocal.ConnectAsync(ev);
+                this._localSocket.ConnectAsync(ev);
 
-                //client = new Client(this._socketLocal);
-                //this._socketLocal.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
+                this.SetTimer(ev, ev.RemoteEndPoint);
             }
             catch (Exception ex)
             {
-                Xb.Util.Out("接続に失敗しました：" + ex.Message);
-                throw new ArgumentException("接続に失敗しました：" + ex.Message);
+                Xb.Util.Out(ex);
+                throw ex;
             }
 
             //接続完了イベントをレイズする。
-            this.FireEvent("Connected", new object[] { this._socketLocal });
+            //this.FireEvent("Connected", new object[] { this._socketLocal });
+
+
+            this.Role = RoleType.Client;
         }
 
 
-        public void Listen(int port)
+        /// <summary>
+        /// Constructor - server mode
+        /// コンストラクタ - サーバモード
+        /// </summary>
+        /// <param name="listenPort"></param>
+        public Tcp(int listenPort)
         {
-            //渡し値ポートがTCP範囲外のとき、異常終了。
-            if (port < 0 | 65335 < port)
+            //ポートがTCP範囲外
+            if (listenPort < 0 || 65335 < listenPort)
             {
-                Xb.Util.Out("渡し値ポートが不正です。");
-                throw new ArgumentException("渡し値ポートが不正です。");
+                Xb.Util.Out($"Xb.Net.Tcp.Constructor: tcp-port out of range [{listenPort}]");
+                throw new ArgumentOutOfRangeException(nameof(listenPort)
+                    , $"Xb.Net.Tcp.Constructor: tcp-port out of range [{listenPort}]");
             }
 
             //ソケットを生成する。
             //IPv4, v6両対応の全ローカルアドレスをListenする
             //http://dobon.net/vb/dotnet/internet/udpclient.html
             //http://dobon.net/vb/dotnet/internet/udpclient.html
-            var endPoint = new System.Net.IPEndPoint(System.Net.IPAddress.IPv6Any, port);
-            this._socketLocal = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily
-                                                            , System.Net.Sockets.SocketType.Stream
-                                                            , System.Net.Sockets.ProtocolType.Tcp);
-            this._socketLocal.SetSocketOption(System.Net.Sockets.SocketOptionLevel.IPv6
-                                            , System.Net.Sockets.SocketOptionName.IPv6Only
-                                            , 0);
+            var endPoint = new System.Net.IPEndPoint(System.Net.IPAddress.IPv6Any, listenPort);
+            this._localSocket = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily
+                , System.Net.Sockets.SocketType.Stream
+                , System.Net.Sockets.ProtocolType.Tcp);
+            this._localSocket.SetSocketOption(System.Net.Sockets.SocketOptionLevel.IPv6
+                , System.Net.Sockets.SocketOptionName.IPv6Only
+                , 0);
 
-            //サービスポートにバインドする。
             try
             {
-                this._socketLocal.Bind(endPoint);
+                this._localSocket.Bind(endPoint);
+                this._localSocket.Listen(1000);
+
+                var ev = new SocketAsyncEventArgs();
+                ev.Completed += OnCompleted;
+                this._localSocket.AcceptAsync(ev);
             }
             catch (Exception ex)
             {
                 //バインド失敗時、ポートが使用中と思われる。エラー応答する。
-                this._socketLocal = null;
-                Xb.Util.Out("ソケットオープンに失敗しました：" + ex.Message);
-                throw new ArgumentException("ソケットオープンに失敗しました：" + ex.Message);
+                this._localSocket = null;
+
+                Xb.Util.Out(ex);
+                throw ex;
             }
 
-            //サービスを開始する。
-            this._socketLocal.Listen(1000);
-
-            var ev = new SocketAsyncEventArgs();
-            ev.Completed += OnCompleted;
-            this._socketLocal.AcceptAsync(ev);
+            this.Role = RoleType.Server;
         }
 
 
-
+        /// <summary>
+        /// Operation competed event
+        /// 各種操作完了イベント
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="ev"></param>
         private void OnCompleted(object sender, SocketAsyncEventArgs ev)
         {
             var socket = (Socket) sender;
-            Debug.WriteLine(String.Format("Async operation completed: {0}; Error: {1}; " 
-                                          , ev.LastOperation
-                                          , ev.SocketError));
+            //Debug.WriteLine(String.Format("Async operation completed: {0}; Error: {1}; "
+            //    , ev.LastOperation
+            //    , ev.SocketError));
 
             switch (ev.LastOperation)
             {
                 case SocketAsyncOperation.Connect:
+
+                    //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Connect, "
+                    //            + $"RemoteEndPoint = {socket.RemoteEndPoint}, "
+                    //            + $"LocalEndPoint = {socket.LocalEndPoint}");
+                    //Xb.Util.Out($"same localSocket? : {(socket == this._localSocket)}");
+
+                    if (ev.SocketError != SocketError.Success)
+                        throw new Exception("Xb.Net.Tcp.OnCompleted: Connect failure");
 
                     var evConnect = new SocketAsyncEventArgs();
                     evConnect.Completed += this.OnCompleted;
                     evConnect.SetBuffer(new byte[1024], 0, 1024);
                     ev.ConnectSocket.ReceiveAsync(evConnect);
 
-                    break;
-                case SocketAsyncOperation.Receive:
-                    if (ev.SocketError != SocketError.Success)
-                    {
-                        socket.Dispose();
-                        return;
-                    }
+                    //fire event
+                    this.Connected?.Invoke(this, new ActionEventArgs(socket.RemoteEndPoint));
 
-                    if (ev.BytesTransferred == 0)
+                    break;
+
+                case SocketAsyncOperation.Receive:
+
+                    //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Recieve, "
+                    //            + $"RemoteEndPoint = {socket.RemoteEndPoint}, "
+                    //            + $"LocalEndPoint = {socket.LocalEndPoint}");
+                    //Xb.Util.Out($"same localSocket? : {(socket == this._localSocket)}");
+
+                    if (ev.SocketError != SocketError.Success
+                        || ev.BytesTransferred == 0)
                     {
+                        //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Recieve Error, "
+                        //            + $"RemoteEndPoint = {socket.RemoteEndPoint}");
+
+                        if (this._remoteSockets.ContainsKey(socket.RemoteEndPoint))
+                        {
+                            this._remoteSockets.Remove(socket.RemoteEndPoint);
+
+                            //Xb.Util.Out("this._remoteSockets CHANGED!!");
+                            //Xb.Util.OutHighlighted(this._remoteSockets
+                            //    .Select(pair => pair.Key.ToString())
+                            //    .ToArray());
+                        }
+
+                        //fire event
+                        this.Disconnected?.Invoke(this
+                            , new ActionEventArgs(socket.RemoteEndPoint));
+
                         socket.Dispose();
                         ev.Dispose();
+
                         return;
                     }
 
-                    var asText = Encoding.ASCII.GetString(ev.Buffer, ev.Offset, ev.BytesTransferred);
-                    Debug.WriteLine(String.Format("Received: {0} bytes: \"{1}\"", ev.BytesTransferred, asText));
+                    var bytes = ev.Buffer.Skip(ev.Offset)
+                        .Take(ev.BytesTransferred)
+                        .ToArray();
+                    var asText = Encoding.ASCII.GetString(bytes);
+                    //Debug.WriteLine($"Received: {ev.BytesTransferred} bytes: \"{asText}\"");
 
                     socket.ReceiveAsync(ev);
 
+                    //fire event
+                    this.Recieved?.Invoke(this
+                        , new RecieveEventArgs(bytes
+                            , socket.RemoteEndPoint));
+
                     break;
+
                 case SocketAsyncOperation.Send:
+                    //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Send, "
+                    //            + $"RemoteEndPoint = {socket.RemoteEndPoint}, "
+                    //            + $"LocalEndPoint = {socket.LocalEndPoint}");
+                    //Xb.Util.Out($"same localSocket? : {(socket == this._localSocket)}");
+
+                    if (ev.SocketError != SocketError.Success)
+                        throw new Exception("Xb.Net.Tcp.OnCompleted: Send failure");
+
+                    this.Sended?.Invoke(this, new ActionEventArgs(socket.RemoteEndPoint));
+
                     break;
+
                 case SocketAsyncOperation.Accept:
+
+                    //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Accept, "
+                    //            + $"RemoteEndPoint = 'CANNOT READ', "
+                    //            + $"LocalEndPoint = {socket.LocalEndPoint}");
+                    //Xb.Util.Out($"same localSocket? : {(socket == this._localSocket)}");
+
+                    if (ev.SocketError != SocketError.Success)
+                        throw new Exception("Xb.Net.Tcp.OnCompleted: Accept failure");
 
                     //Continue Accepting
                     var clientSocket = ev.AcceptSocket;
                     ev.AcceptSocket = null;
                     socket.AcceptAsync(ev);
+
+                    //Xb.Util.Out($"clientSocket.RemoteEndPoint: {clientSocket.RemoteEndPoint}");
+                    //Xb.Util.Out($"clientSocket.LocalEndPoint: {clientSocket.LocalEndPoint}");
+
+                    //regist client socket
+                    if (!this._remoteSockets.ContainsKey(clientSocket.RemoteEndPoint))
+                    {
+                        this._remoteSockets.Add(clientSocket.RemoteEndPoint, clientSocket);
+
+                        //Xb.Util.Out("this._remoteSockets CHANGED!!");
+                        //Xb.Util.OutHighlighted(this._remoteSockets
+                        //    .Select(pair => pair.Key.ToString())
+                        //    .ToArray());
+                    }
+
 
                     //Set Recieve event for Accepted socket.
                     var newEv = new SocketAsyncEventArgs();
@@ -336,12 +466,37 @@ namespace Xb.Net
                     newEv.SetBuffer(new byte[1024], 0, 1024);
                     clientSocket.ReceiveAsync(newEv);
 
+                    //fire event
+                    this.Accepted?.Invoke(this
+                        , new ActionEventArgs(clientSocket.RemoteEndPoint));
+
                     break;
+
                 case SocketAsyncOperation.Disconnect:
+
+                    //Xb.Util.Out($"Xb.Net.Tcp.OnCompleted: Disconnect, "
+                    //            + $"RemoteEndPoint = {socket.RemoteEndPoint}, "
+                    //            + $"LocalEndPoint = {socket.LocalEndPoint}");
+                    //Xb.Util.Out($"same localSocket? : {(socket == this._localSocket)}");
+
+                    if (this._remoteSockets.ContainsKey(socket.RemoteEndPoint))
+                    {
+                        this._remoteSockets.Remove(socket.RemoteEndPoint);
+
+                        //Xb.Util.Out("this._remoteSockets CHANGED!!");
+                        //Xb.Util.OutHighlighted(this._remoteSockets
+                        //    .Select(pair => pair.Key.ToString())
+                        //    .ToArray());
+                    }
+
+                    this.Disconnected?.Invoke(this
+                        , new ActionEventArgs(socket.RemoteEndPoint));
+
                     socket.Dispose();
                     ev.Dispose();
 
                     break;
+
                 default:
 
                     break;
@@ -349,294 +504,155 @@ namespace Xb.Net
         }
 
 
-        ///// <summary>
-        ///// リモートデータ受信時の処理
-        ///// </summary>
-        ///// <param name="ar"></param>
-        ///// <remarks></remarks>
-        //private void Recieve(IAsyncResult ar)
-        //{
-        //    Client client = (Client)ar.AsyncState;
-        //    byte[] recieveBytes = null;
-        //    int length = 0;
-
-        //    //受信データ長を取得する。
-        //    try
-        //    {
-        //        length = client.Socket.EndReceive(ar);
-        //    }
-        //    catch (ObjectDisposedException)
-        //    {
-        //        //クライアントソケットが既に破棄されているとき、何もしない。
-        //        return;
-        //    }
-        //    catch (Exception)
-        //    {
-        //        length = 0;
-        //    }
-
-        //    //切断通知か否かを検証する。
-        //    if ((length <= 0))
-        //    {
-        //        //データが無いとき、切断されたと見做してリモートによる切断イベントをレイズする。
-        //        client.Socket.Close();
-        //        this.FireEvent("Disconnected", new object[] {});
-        //        return;
-        //    }
-
-        //    //受診したデータを蓄積する。
-        //    if (client.Buffer != null)
-        //    {
-        //        //クライアント用ストリームが存在しないとき、生成する。
-        //        if (client.Stream == null)
-        //            client.Stream = new System.IO.MemoryStream();
-
-        //        //クライアント用ストリームへ、バッファ内容を一括書き込みする。
-        //        //第二引数に注意：ストリーム上のオフセットでなく、バッファByte配列上のオフセットになる。
-        //        client.Stream.Write(client.Buffer, 0, length);
-        //    }
-
-        //    //ソケットオブジェクト側の受信サイズプロパティの値が 0 のとき、
-        //    //一連のストリーム受信が完了したと見做す。
-        //    if (client.Socket.Available == 0)
-        //    {
-        //        recieveBytes = client.Stream.ToArray();
-
-        //        //クライアント用ストリームを破棄、更新する。
-        //        client.Stream.Close();
-        //        client.Stream = new System.IO.MemoryStream();
-
-        //        //受信データが存在するとき、データ取得イベントをレイズする
-        //        if ((recieveBytes.Length > 0))
-        //        {
-        //            this.FireEvent("Recieved", new object[] {
-        //                recieveBytes,
-        //                client.Socket
-        //            });
-        //        }
-        //    }
-
-        //    //クライアントソケットで再度データ待ち受けを開始する。
-        //    try
-        //    {
-        //        client.Socket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
-        //    }
-        //    catch (Exception)
-        //    {
-        //        //RSTフラグによる切断のとき、BeginRecieveに失敗する。
-        //        client.Socket.Close();
-        //        //リモートによる切断イベントをレイズする。
-        //        this.FireEvent("Disconnected", new object[] {});
-        //    }
-
-        //}
-
-
-        ///// <summary>
-        ///// 渡し値アドレスでサービスを開始する。
-        ///// </summary>
-        ///// <param name="ipAddress"></param>
-        ///// <param name="port"></param>
-        ///// <remarks></remarks>
-        //public void Listen(string ipAddress, int port)
-        //{
-        //    //IPアドレスが渡されていないとき、もしくはポートがTCP範囲外のとき、異常終了する。
-        //    if ((ipAddress == null || port < 0 || 65335 < port))
-        //    {
-        //        Xb.Util.Out("渡し値アドレス、もしくはポートが不正です。");
-        //        throw new ArgumentException("渡し値アドレス、もしくはポートが不正です。");
-        //    }
-
-        //    System.Net.IPAddress[] addresses = null;
-        //    int i = 0;
-        //    int addIdx = 0;
-
-        //    //渡し値アドレスの存在チェック
-        //    addIdx = -1;
-        //    addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
-        //    for (i = 0; i <= addresses.Length - 1; i++)
-        //    {
-        //        if (addresses[i].ToString() == ipAddress)
-        //        {
-        //            addIdx = i;
-        //            break;
-        //        }
-        //    }
-        //    if (addIdx == -1)
-        //    {
-        //        Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-        //        throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-        //    }
-
-        //    this.Listen(addresses[addIdx], port);
-        //}
-
-
-        ///// <summary>
-        ///// 渡し値アドレスでサービスを開始する。
-        ///// </summary>
-        ///// <param name="ipAddress"></param>
-        ///// <param name="port"></param>
-        ///// <remarks></remarks>
-        //public void Listen(System.Net.IPAddress ipAddress, int port)
-        //{
-        //    //IPアドレスが不正のとき、異常終了。
-        //    if ((ipAddress == null))
-        //    {
-        //        Xb.Util.Out("渡し値IPアドレスが不正です。");
-        //        throw new ArgumentException("渡し値IPアドレスが不正です。");
-        //    }
-
-        //    //渡し値ポートがTCP範囲外のとき、異常終了。
-        //    if ((port < 0 | 65335 < port))
-        //    {
-        //        Xb.Util.Out("渡し値ポートが不正です。");
-        //        throw new ArgumentException("渡し値ポートが不正です。");
-        //    }
-
-        //    System.Net.IPAddress[] addresses = null;
-        //    int i = 0;
-        //    int addIdx = 0;
-        //    System.Net.IPEndPoint endPoint = null;
-
-        //    //渡し値アドレスの存在チェック
-        //    addIdx = -1;
-        //    addresses = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName());
-        //    for (i = 0; i <= addresses.Length - 1; i++)
-        //    {
-        //        if ((addresses[i].ToString() == ipAddress.ToString()))
-        //        {
-        //            addIdx = i;
-        //            break; // TODO: might not be correct. Was : Exit For
-        //        }
-        //    }
-        //    if ((addIdx == -1))
-        //    {
-        //        Xb.Util.Out("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-        //        throw new ArgumentException("渡し値アドレスが、ローカルデバイス上に見つかりません。");
-        //    }
-
-        //    //ソケットを生成する。
-        //    endPoint = new System.Net.IPEndPoint(ipAddress, port);
-        //    this._socketLocal = null;
-        //    this._socketLocal = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
-
-        //    //サービスポートにバインドする。
-        //    try
-        //    {
-        //        this._socketLocal.Bind(endPoint);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        //バインド失敗時、ポートが使用中と思われる。エラー応答する。
-        //        this._socketLocal = null;
-        //        Xb.Util.Out("ソケットオープンに失敗しました：" + ex.Message);
-        //        throw new ArgumentException("ソケットオープンに失敗しました：" + ex.Message);
-        //    }
-
-        //    //サービスを開始する。
-        //    this._socketLocal.Listen(1000);
-        //    this._socketLocal.BeginAccept(Accept, this._socketLocal);
-
-        //}
-
-        ///// <summary>
-        ///// サービスポートへの接続を受け付ける。
-        ///// </summary>
-        ///// <param name="ar"></param>
-        ///// <remarks></remarks>
-
-        //private void Accept(IAsyncResult ar)
-        //{
-        //    System.Net.Sockets.Socket localSocket = null;
-        //    System.Net.Sockets.Socket remoteSocket = null;
-        //    Client client = null;
-
-        //    try
-        //    {
-        //        localSocket = (System.Net.Sockets.Socket)ar.AsyncState;
-        //        remoteSocket = localSocket.EndAccept(ar);
-
-        //        //接続したソケットでデータ受付を開始する。
-        //        client = new Client(remoteSocket);
-        //        remoteSocket.BeginReceive(client.Buffer, 0, Net.Tcp.Client.BufferLength, System.Net.Sockets.SocketFlags.None, new AsyncCallback(Recieve), client);
-
-        //        //新たにサービス受付用ソケットを生成、開始する。
-        //        localSocket.BeginAccept(new AsyncCallback(Accept), localSocket);
-        //    }
-        //    catch (Exception)
-        //    {
-        //        return;
-        //    }
-
-        //    //接続完了イベントをレイズする。
-        //    this.FireEvent("Connected", new object[] { client.Socket });
-        //}
-
-
         /// <summary>
+        /// Send Data to Remote
         /// 接続先にデータを送付する。
         /// </summary>
         /// <param name="bytes"></param>
+        /// <param name="endPoint"></param>
         /// <returns></returns>
-        /// <remarks></remarks>
-        public bool Send(byte[] bytes)
+        /// <remarks>
+        /// </remarks>
+        public void Send(byte[] bytes
+                       , EndPoint endPoint = null)
         {
+            //TODO: implement Timeout
 
-            //接続していないとき、異常終了する。
-            if (this._socketLocal == null || bytes == null || !this._socketLocal.Connected)
-                return false;
+            //validate passing values
+            if (bytes == null)
+                throw new ArgumentNullException(nameof(bytes), "Xb.Net.Tcp.Send: passing null bytes");
+
+            //sending target sockets
+            var targetSockets = new List<Socket>();
+
+            switch (this.Role)
+            {
+                case RoleType.Client:
+
+                    if (this._localSocket == null
+                        || !this._localSocket.Connected)
+                        throw new InvalidOperationException("Xb.Net.Tcp.Send: not connected.");
+
+                    //if client-mode, only one sending-target.
+                    targetSockets.Add(this._localSocket);
+
+                    break;
+                case RoleType.Server:
+
+                    if (endPoint != null
+                        && !this._remoteSockets.ContainsKey(endPoint))
+                        throw new InvalidOperationException("Xb.Net.Tcp.Send: target not found");
+
+                    if (this._remoteSockets.Count <= 0)
+                        throw new InvalidOperationException("Xb.Net.Tcp.Send: hasn't clients");
+
+                    if (endPoint != null)
+                    {
+                        //order target, pick one
+                        targetSockets.Add(this._remoteSockets
+                            .Where(pair => pair.Key == endPoint)
+                            .Select(pair => pair.Value)
+                            .First());
+                    }
+                    else
+                    {
+                        //no-order, pick all
+                        targetSockets.AddRange(this._remoteSockets
+                            .Select(pair => pair.Value));
+                    }
+
+                    break;
+                default:
+                    throw new InvalidOperationException($"Xb.Net.Tcp.Send: undefined Xb.Net.Tcp.RoleType [{this.Role}]");
+            }
 
             try
             {
-                this._socketLocal.Send(bytes);
+                foreach (var socket in targetSockets)
+                {
+                    var ev = new SocketAsyncEventArgs();
+                    ev.Completed += this.OnCompleted;
+                    ev.SetBuffer(bytes, 0, bytes.Length);
+                    socket.SendAsync(ev);
+
+                    this.SetTimer(ev, socket.RemoteEndPoint);
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                Xb.Util.Out(ex);
+                throw ex;
             }
-
-            return true;
-
         }
 
 
         /// <summary>
+        /// Send Text-Data to Remote
         /// 接続先にデータを送付する。
         /// </summary>
         /// <param name="text"></param>
+        /// <param name="encoding">Default: UTF-8</param>
+        /// <param name="endPoint"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public bool Send(string text)
+        public void Send(string text
+                       , System.Text.Encoding encoding = null
+                       , EndPoint endPoint = null)
         {
+            if (encoding == null)
+                encoding = Encoding.UTF8;
 
-            if (this._socketLocal == null || text == null)
-                return false;
-
-            System.Text.Encoding encode = null;
-            encode = System.Text.Encoding.UTF8;
-            return this.Send(text, encode);
-
+            this.Send(encoding.GetBytes(text), endPoint);
         }
 
 
         /// <summary>
-        /// 接続先にデータを送付する。
+        /// Set timer for operation-timeout
         /// </summary>
-        /// <param name="text"></param>
-        /// <param name="encode"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        public bool Send(string text, System.Text.Encoding encode)
+        /// <param name="ev"></param>
+        /// <param name="endPoint"></param>
+        private void SetTimer(SocketAsyncEventArgs ev
+            , EndPoint endPoint)
         {
-
-            if (this._socketLocal == null || text == null || encode == null)
-                return false;
-
-            return this.Send(encode.GetBytes(text));
-
+            var timerSet = new TimerSet();
+            timerSet.EventArgs = ev;
+            timerSet.EndPoint = endPoint;
+            timerSet.Timer = new Timer(new TimerCallback(OnTimeout), timerSet, this.Timeout, -1);
+            this._timeoutTimers.Add(ev, timerSet);
         }
 
+
+        /// <summary>
+        /// Timeouted
+        /// </summary>
+        /// <param name="arg"></param>
+        private void OnTimeout(object arg)
+        {
+            var timerSet = (TimerSet) arg;
+
+            var endPoint = timerSet.EndPoint;
+            var operation = timerSet.EventArgs.LastOperation;
+
+            this.RemoveTimer(timerSet.EventArgs);
+
+            //throw exception
+            throw new TimeoutException(endPoint, operation);
+        }
+
+
+        /// <summary>
+        /// Remove timer for operation-timeout
+        /// </summary>
+        /// <param name="ev"></param>
+        private void RemoveTimer(SocketAsyncEventArgs ev)
+        {
+            if (this._timeoutTimers.ContainsKey(ev))
+            {
+                var timerSet = this._timeoutTimers[ev];
+                this._timeoutTimers.Remove(ev);
+                timerSet.Dispose();
+            }
+        }
 
         // 重複する呼び出しを検出するには
         private bool _disposedValue = false;
@@ -648,10 +664,25 @@ namespace Xb.Net
             {
                 if (disposing)
                 {
-                    if (this._socketLocal == null)
-                        return;
+                    foreach (var pair in this._timeoutTimers)
+                    {
+                        try
+                        { pair.Value.Dispose(); }
+                        catch (Exception) { }
+                    }
+                    this._timeoutTimers = null;
 
-                    this._socketLocal.Dispose();
+                    foreach (var pair in this._remoteSockets)
+                    {
+                        try
+                        { pair.Value.Dispose(); }
+                        catch (Exception) { }
+                    }
+                    this._remoteSockets = null;
+
+                    try
+                    { this._localSocket?.Dispose(); }
+                    catch (Exception) { }
                 }
             }
             this._disposedValue = true;
