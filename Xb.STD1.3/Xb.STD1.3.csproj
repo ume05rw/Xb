@@ -47,6 +47,7 @@
     <Compile Include="Xb\App\Logger.cs" />
     <Compile Include="Xb\File\Node.cs" />
     <Compile Include="Xb\File\NodeList.cs" />
+    <Compile Include="Xb\File\Util.cs" />
     <Compile Include="Xb\Net\Tcp.cs" />
     <Compile Include="Xb\Net\Util.cs" />
     <Compile Include="Xb\Type\Util.cs" />

@@ -1,138 +1,161 @@
-﻿//using System;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 
-//namespace Xb.App
-//{
-//    /// <summary>
-//    /// インスタンスベースのログ出力クラス
-//    /// </summary>
-//    /// <remarks>
-//    /// </remarks>
-//    public class Logger : IDisposable
-//    {
-//        //オープンしたファイルの番号
-//        //private int _fileNo;
-//        private System.IO.StreamWriter _writer;
+namespace Xb.App
+{
+    /// <summary>
+    /// Log-Writer, instance based
+    /// インスタンスベースのログ出力クラス
+    /// </summary>
+    /// <remarks>
+    /// </remarks>
+    public class Logger : IDisposable
+    {
+        /// <summary>
+        /// Log-file stream
+        /// </summary>
+        private System.IO.FileStream _stream;
 
-//        //ログファイルのフルパス
-//        private readonly string _path;
+        /// <summary>
+        /// Stream writer
+        /// </summary>
+        private System.IO.StreamWriter _writer;
 
-//        /// <summary>
-//        /// ログファイルのフルパス
-//        /// </summary>
-//        public string Path { get { return this._path; } }
+        /// <summary>
+        /// Log-file path
+        /// ログファイルのフルパス
+        /// </summary>
+        public string Path { get; private set; }
 
-//        /// <summary>
-//        /// コンストラクタ
-//        /// </summary>
-//        /// <param name="fileName"></param>
-//        /// <param name="directory"></param>
-//        /// <remarks></remarks>
-//        public Logger(string fileName = null, string directory = null)
-//        {
-//            //ログファイル名が未指定のとき、日時で名称を生成する。
-//            if (fileName == null)
-//            {
-//                fileName = DateTime.Now.ToString("yyyyMMdd") + "_log.txt";
-//            }
+        /// <summary>
+        /// Constructor
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="directory"></param>
+        /// <remarks></remarks>
+        public Logger(string fileName = null, string directory = null)
+        {
+            fileName = fileName ?? DateTime.Now.ToString("yyyyMMdd") + "_log.txt";
+            directory = directory ?? System.IO.Directory.GetCurrentDirectory();
 
-//            //ログファイル出力先が未指定のとき、共通ライブラリ側の設定ファイルからパスを取得する。
-//            if (directory == null)
-//            {
-//                //TODO: Xamarin.iOS/Androidで取得できる実行ファイルパスにする。
-//                directory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-//            }
+            this.Path = System.IO.Path.Combine(directory, fileName);
 
-//            this._path = System.IO.Path.Combine(directory, fileName);
+            //not exist directory, try-create
+            if (!System.IO.Directory.Exists(directory))
+            {
+                try
+                {
+                    System.IO.Directory.CreateDirectory(directory);
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out($"Xb.App.Logger.Constructor: directory cannot create [{directory}]");
+                    Xb.Util.Out(ex);
+                    throw ex;
+                }
+            }
 
-//            //ログファイル出力先が存在しないとき、フォルダ生成を試みる。
-//            if (!System.IO.Directory.Exists(directory))
-//            {
-//                try
-//                {
-//                    System.IO.Directory.CreateDirectory(directory);
-//                }
-//                catch (Exception)
-//                {
-//                    Xb.Util.Out("Xb.App.Logger.Constructor: 指定されたログ出力先パスを生成出来ませんでした：" + directory);
-//                    throw new Exception("b.App.Logger.Constructor: 指定されたログ出力先パスを生成出来ませんでした：" + directory);
-//                }
-//            }
+            //not exist file, create
+            if (!System.IO.File.Exists(this.Path))
+            {
+                Xb.File.Util.WriteText(this.Path
+                                     , $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : create log file");
+            }
 
-//            //ログファイルが存在しないとき、新規作成する。
-//            if (!System.IO.File.Exists(this._path))
-//            {
-//                var writer = new System.IO.StreamWriter(this._path, false, System.Text.Encoding.UTF8);
-//                writer.WriteLine(DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.fff") + " : ログファイル作成");
-//                writer.Close();
-//            }
-
-//            //ログファイルを追記モードで開く
-//            this._writer = new System.IO.StreamWriter(this._path, true, System.Text.Encoding.UTF8);
-//        }
+            //open file on append-mode
+            this._stream = new System.IO.FileStream(this.Path
+                                                  , FileMode.Append
+                                                  , FileAccess.Write);
+            this._writer = new System.IO.StreamWriter(this._stream
+                                                    , System.Text.Encoding.UTF8);
+        }
 
 
-//        /// <summary>
-//        /// ログを書き出す。
-//        /// </summary>
-//        /// <param name="message"></param>
-//        /// <remarks></remarks>
-//        public void Write(string message)
-//        {
-//            try
-//            {
-//                var text = string.Format("{0} : {1}",
-//                                         DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.fff"),
-//                                         message);
+        /// <summary>
+        /// Write message
+        /// ログを書き出す。
+        /// </summary>
+        /// <param name="message"></param>
+        /// <remarks></remarks>
+        public void Write(string message)
+        {
+            try
+            {
+                var text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {message}";
+                this._writer.WriteLine(text);
+                Xb.Util.Out(text);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out($"Xb.App.Logger.Write: write failure [{message}]");
+                Xb.Util.Out(ex);
+                throw ex;
+            }
+        }
 
-//                this._writer.WriteLine(text);
-//                Xb.Util.Out(text);
-//            }
-//            catch (Exception)
-//            {
-//                Xb.Util.Out("Xb.App.Logger.Log: ログ出力が出来ませんでした：" + message);
-//                throw new Exception("Xb.App.Logger.Log: ログ出力が出来ませんでした：" + message);
-//            }
-//        }
 
-//        /// <summary>
-//        /// ログファイルを閉じる。
-//        /// </summary>
-//        /// <remarks></remarks>
-//        public void Close()
-//        {
-//            try
-//            {
-//                this._writer.Close();
-//            }
-//            catch (Exception)
-//            {
-//            }
-//        }
+        /// <summary>
+        /// Write message on async
+        /// ログを書き出す。
+        /// </summary>
+        /// <param name="message"></param>
+        /// <remarks></remarks>
+        public async Task WriteAsync(string message)
+        {
+            try
+            {
+                var text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {message}";
+                await this._writer.WriteLineAsync(text);
+                Xb.Util.Out(text);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out($"Xb.App.Logger.Write: write failure [{message}]");
+                Xb.Util.Out(ex);
+                throw ex;
+            }
+        }
 
-//        // 重複する呼び出しを検出するには
-//        private bool _disposedValue;
+        // 重複する呼び出しを検出するには
+        private bool _disposedValue;
 
-//        // IDisposable
-//        protected virtual void Dispose(bool disposing)
-//        {
-//            if (!this._disposedValue)
-//            {
-//                if (disposing)
-//                {
-//                    this.Close();
-//                }
-//            }
-//            this._disposedValue = true;
-//        }
+        // IDisposable
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this._disposedValue)
+            {
+                if (disposing)
+                {
+                    if (this._writer != null)
+                    {
+                        try
+                        { this._writer.Dispose(); }
+                        catch (Exception){}
+                    }
 
-//        #region "IDisposable Support"
-//        // このコードは、破棄可能なパターンを正しく実装できるように Visual Basic によって追加されました。
-//        public void Dispose()
-//        {
-//            // このコードを変更しないでください。クリーンアップ コードを上の Dispose(ByVal disposing As Boolean) に記述します。
-//            Dispose(true);
-//            GC.SuppressFinalize(this);
-//        }
-//        #endregion
-//    }
-//}
+                    if (this._stream != null)
+                    {
+                        try
+                        { this._stream.Dispose(); }
+                        catch (Exception) { }
+                    }
+
+                    this.Path = null;
+                }
+            }
+            this._disposedValue = true;
+        }
+
+        #region "IDisposable Support"
+        // このコードは、破棄可能なパターンを正しく実装できるように Visual Basic によって追加されました。
+        public void Dispose()
+        {
+            // このコードを変更しないでください。クリーンアップ コードを上の Dispose(ByVal disposing As Boolean) に記述します。
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
+    }
+}
