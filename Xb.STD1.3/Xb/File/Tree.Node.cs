@@ -200,8 +200,20 @@ namespace Xb.File
             /// </summary>
             public void Scan()
             {
+                //自分自身を示すパスがファイルシステム上に存在しなくなったら、破棄する。
+                var exists = (this.Type == NodeType.Directory)
+                                ? System.IO.Directory.Exists(this.FullPath)
+                                : System.IO.File.Exists(this.FullPath);
+                if (!exists)
+                {
+                    this.Dispose();
+                    return;
+                }
+
+                //以下はディレクトリのみ。ファイルは子が居ないので。
                 if (this.Type == NodeType.File)
                     return;
+
 
                 //直下のファイル／ディレクトリのパス文字列配列を取得する。
                 var children = new List<string>();
@@ -227,8 +239,8 @@ namespace Xb.File
                                                     .ToArray();
                 foreach (var removeTarget in removeTargets)
                 {
+                    this.Tree[removeTarget]?.Dispose();
                     this._childPaths.Remove(removeTarget);
-                    this.Tree._nodes.Remove(removeTarget);
                 }
 
                 //新しく追加されたパスをループ
@@ -246,7 +258,7 @@ namespace Xb.File
             /// 子ノードを再帰的に走査する
             /// </summary>
             /// <returns></returns>
-            public async Task ScanRecursive()
+            public async Task ScanRecursiveAsync()
             {
                 if (this.Type == NodeType.File)
                     return;
@@ -259,7 +271,7 @@ namespace Xb.File
                 //配下のディレクトリをループ
                 foreach (var node in this.Children.Where(node => node.Type == NodeType.Directory))
                 {
-                    await node.ScanRecursive();
+                    await node.ScanRecursiveAsync();
                 }
             }
 
@@ -287,6 +299,17 @@ namespace Xb.File
             {
                 foreach (var childNode in childNodes)
                     this.AddChild(childNode);
+            }
+
+            /// <summary>
+            /// Remove child-node
+            /// 子ノードを管理用配列から削除する
+            /// </summary>
+            /// <param name="childNode"></param>
+            public void RemoveChild(Xb.File.Tree.Node childNode)
+            {
+                if (this._childPaths.Contains(childNode.FullPath))
+                    this._childPaths.Remove(childNode.FullPath);
             }
 
 
@@ -384,6 +407,19 @@ namespace Xb.File
                 {
                     if (disposing)
                     {
+                        //直下の子ノードを破棄
+                        foreach (var node in this.Children)
+                            node?.Dispose();
+
+                        //Xb.File.Treeオブジェクト上のリストから、自身のノードを削除
+                        if (this.Tree[this.FullPath] != null)
+                            this.Tree._nodes.Remove(this.FullPath);
+
+                        //親ノードから自身のパスを削除
+                        var parentNode = this.Tree[this._parentPath];
+                        parentNode?.RemoveChild(this);
+
+
                         this._parentPath = null;
 
                         for (var i = 0; i < this._childPaths.Count; i++)

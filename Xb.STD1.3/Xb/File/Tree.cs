@@ -123,6 +123,17 @@ namespace Xb.File
 
 
         /// <summary>
+        /// Tree-Structure Re-Scan recursive(VERY HEAVY!)
+        /// ツリー構造をルートノードから再帰的に取得する
+        /// </summary>
+        /// <returns></returns>
+        public async Task ScanRecursiveAsync()
+        {
+            await this.RootNode.ScanRecursiveAsync();
+        }
+
+
+        /// <summary>
         /// Returns Tree-object with the passing path as the root
         /// 指定パスをルートにした、Treeオブジェクトを返す
         /// </summary>
@@ -145,7 +156,7 @@ namespace Xb.File
         public static async Task<Xb.File.Tree> GetTreeRecursiveAsync(string path)
         {
             var result = new Xb.File.Tree(path);
-            await result.RootNode.ScanRecursive();
+            await result.RootNode.ScanRecursiveAsync();
             return result;
         }
 
