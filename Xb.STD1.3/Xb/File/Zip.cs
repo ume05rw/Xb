@@ -202,6 +202,30 @@ namespace Xb.File
 
 
         /// <summary>
+        /// Get byte-array in zip on async
+        /// Zipエントリの内容をバイト配列で取得する。
+        /// </summary>
+        /// <param name="entry"></param>
+        /// <returns></returns>
+        public async Task<byte[]> GetBytesAsync(ZipArchiveEntry entry)
+        {
+            return await Task.Run(() => this.GetBytes(entry));
+        }
+
+
+        /// <summary>
+        /// Get byte-array in zip on async
+        /// Zipエントリの内容をバイト配列で取得する。
+        /// </summary>
+        /// <param name="entryString"></param>
+        /// <returns></returns>
+        public async Task<byte[]> GetBytesAsync(string entryString)
+        {
+            return await Task.Run(() => this.GetBytes(entryString));
+        }
+
+
+        /// <summary>
         /// Delete entry
         /// Zipファイル内のエントリを削除する
         /// </summary>
@@ -238,6 +262,28 @@ namespace Xb.File
 
 
         /// <summary>
+        /// Delete entry on async
+        /// Zipファイル内のエントリを削除する
+        /// </summary>
+        /// <param name="entry"></param>
+        public async Task DeleteAsync(ZipArchiveEntry entry)
+        {
+            await Task.Run(() => { this.Delete(entry); });
+        }
+
+
+        /// <summary>
+        /// Delete entry on async
+        /// Zipファイル内のエントリを削除する
+        /// </summary>
+        /// <param name="entryString"></param>
+        public async Task DeleteAsync(string entryString)
+        {
+            await Task.Run(() => { this.Delete(entryString); });
+        }
+
+
+        /// <summary>
         /// Overwrite entry
         /// Zipファイル内のエントリを上書きする
         /// </summary>
@@ -266,7 +312,7 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Overwrite entry
+        /// Overwrite entry on async
         /// Zipファイル内のエントリを上書きする
         /// </summary>
         /// <param name="entryString"></param>
@@ -284,6 +330,33 @@ namespace Xb.File
 
             this.WriteBytes(entry, bytes);
         }
+
+
+        /// <summary>
+        /// Overwrite entry on async
+        /// Zipファイル内のエントリを上書きする
+        /// </summary>
+        /// <param name="entryString"></param>
+        /// <param name="bytes"></param>
+        public async Task WriteBytesAsync(ZipArchiveEntry entry
+                                        , byte[] bytes)
+        {
+            await Task.Run(() => { this.WriteBytes(entry, bytes); });
+        }
+
+
+        /// <summary>
+        /// Overwrite entry on async
+        /// Zipファイル内のエントリを上書きする
+        /// </summary>
+        /// <param name="entryString"></param>
+        /// <param name="bytes"></param>
+        public async Task WriteBytesAsync(string entryString
+                                        , byte[] bytes)
+        {
+            await Task.Run(() => { this.WriteBytes(entryString, bytes); });
+        }
+
 
 
         #region IDisposable Support

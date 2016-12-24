@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Xb.App
@@ -12,6 +13,89 @@ namespace Xb.App
     /// </remarks>
     public class Logger : IDisposable
     {
+        /// <summary>
+        /// static log-writing method
+        /// </summary>
+        /// <param name="message"></param>
+        public static void Log(string message
+                             , string fileName = null
+                             , string directory = null)
+        {
+            Logger.Init(ref fileName, ref directory);
+
+            var fullPath = System.IO.Path.Combine(directory, fileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Append, FileAccess.Write))
+            {
+                using (var writer = new StreamWriter(stream, Encoding.UTF8))
+                {
+                    try
+                    {
+                        var text = Logger.FormatMessage(message);
+                        writer.WriteLine(text);
+                        Xb.Util.Out(text);
+                    }
+                    catch (Exception ex)
+                    {
+                        Xb.Util.Out($"Xb.App.Logger.Log: write failure [{message}]");
+                        Xb.Util.Out(ex);
+                        throw ex;
+                    }
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Initialize log-file
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="directory"></param>
+        private static void Init(ref string fileName
+                               , ref string directory)
+        {
+            fileName = string.IsNullOrEmpty(fileName)
+                            ? DateTime.Now.ToString("yyyyMMdd") + "_log.txt"
+                            : fileName;
+            directory = directory ?? System.IO.Directory.GetCurrentDirectory();
+
+            //not exist directory, try-create
+            if (!System.IO.Directory.Exists(directory))
+            {
+                try
+                {
+                    System.IO.Directory.CreateDirectory(directory);
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out($"Xb.App.Logger.Init: directory cannot create [{directory}]");
+                    Xb.Util.Out(ex);
+                    throw ex;
+                }
+            }
+
+            var fullPath = System.IO.Path.Combine(directory, fileName);
+
+            //not exist file, create
+            if (!System.IO.File.Exists(fullPath))
+            {
+                Xb.File.Util.WriteText(fullPath
+                                     , Logger.FormatMessage("create log file"));
+            }
+        }
+
+
+        /// <summary>
+        /// Format log-message string
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        private static string FormatMessage(string message)
+        {
+            return $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {message}";
+        }
+
+
         /// <summary>
         /// Log-file stream
         /// </summary>
@@ -28,6 +112,7 @@ namespace Xb.App
         /// </summary>
         public string Path { get; private set; }
 
+
         /// <summary>
         /// Constructor
         /// コンストラクタ
@@ -37,32 +122,9 @@ namespace Xb.App
         /// <remarks></remarks>
         public Logger(string fileName = null, string directory = null)
         {
-            fileName = fileName ?? DateTime.Now.ToString("yyyyMMdd") + "_log.txt";
-            directory = directory ?? System.IO.Directory.GetCurrentDirectory();
+            Logger.Init(ref fileName, ref directory);
 
             this.Path = System.IO.Path.Combine(directory, fileName);
-
-            //not exist directory, try-create
-            if (!System.IO.Directory.Exists(directory))
-            {
-                try
-                {
-                    System.IO.Directory.CreateDirectory(directory);
-                }
-                catch (Exception ex)
-                {
-                    Xb.Util.Out($"Xb.App.Logger.Constructor: directory cannot create [{directory}]");
-                    Xb.Util.Out(ex);
-                    throw ex;
-                }
-            }
-
-            //not exist file, create
-            if (!System.IO.File.Exists(this.Path))
-            {
-                Xb.File.Util.WriteText(this.Path
-                                     , $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : create log file");
-            }
 
             //open file on append-mode
             this._stream = new System.IO.FileStream(this.Path
@@ -83,7 +145,7 @@ namespace Xb.App
         {
             try
             {
-                var text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {message}";
+                var text = Logger.FormatMessage(message);
                 this._writer.WriteLine(text);
                 Xb.Util.Out(text);
             }
@@ -106,17 +168,18 @@ namespace Xb.App
         {
             try
             {
-                var text = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} : {message}";
+                var text = Logger.FormatMessage(message);
                 await this._writer.WriteLineAsync(text);
                 Xb.Util.Out(text);
             }
             catch (Exception ex)
             {
-                Xb.Util.Out($"Xb.App.Logger.Write: write failure [{message}]");
+                Xb.Util.Out($"Xb.App.Logger.WriteAsync: write failure [{message}]");
                 Xb.Util.Out(ex);
                 throw ex;
             }
         }
+
 
         // 重複する呼び出しを検出するには
         private bool _disposedValue;

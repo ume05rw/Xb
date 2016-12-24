@@ -89,12 +89,7 @@ namespace Xb.File
         /// <returns></returns>
         public async static Task<byte[]> GetBytesAsync(string fileName)
         {
-            byte[] result = null;
-            await Task.Run(() =>
-            {
-                result = Xb.File.Util.GetBytes(fileName);
-            });
-            return result;
+            return await Task.Run(() => Xb.File.Util.GetBytes(fileName));
         }
 
 
@@ -118,12 +113,7 @@ namespace Xb.File
         /// <returns></returns>
         public async static Task<string> GetTextAsync(string fileName)
         {
-            string result = null;
-            await Task.Run(() =>
-            {
-                result = Xb.File.Util.GetText(fileName);
-            });
-            return result;
+            return await Task.Run(() => Xb.File.Util.GetText(fileName));
         }
 
 
@@ -166,12 +156,7 @@ namespace Xb.File
         public async static Task<string> GetTextAsync(string fileName
                                                     , Encoding encoding)
         {
-            string result = null;
-            await Task.Run(() =>
-            {
-                result = Xb.File.Util.GetText(fileName, encoding);
-            });
-            return result;
+            return await Task.Run(() => Xb.File.Util.GetText(fileName, encoding));
         }
 
 
@@ -203,10 +188,7 @@ namespace Xb.File
         public async static Task WriteBytesAsync(string fileName
                                                , byte[] bytes)
         {
-            await Task.Run(() =>
-            {
-                Xb.File.Util.WriteBytes(fileName, bytes);
-            });
+            await Task.Run(() => Xb.File.Util.WriteBytes(fileName, bytes));
         }
 
 
@@ -238,10 +220,7 @@ namespace Xb.File
                                               , string text
                                               , Encoding encoding = null)
         {
-            await Task.Run(() =>
-            {
-                Xb.File.Util.WriteText(fileName, text, encoding);
-            });
+            await Task.Run(() => Xb.File.Util.WriteText(fileName, text, encoding));
         }
     }
 }
