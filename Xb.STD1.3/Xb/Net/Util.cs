@@ -87,32 +87,18 @@ namespace Xb.Net
         /// </summary>
         /// <returns></returns>
         /// <remarks></remarks>
-        public async static Task<System.Net.IPAddress[]> GetIpAddresses(bool excludeLoopback = false)
+        public static System.Net.IPAddress[] GetIpAddresses(bool excludeLoopback = false)
         {
-            var addresses = await System.Net.Dns.GetHostAddressesAsync(System.Net.Dns.GetHostName());
-
+            var addresses = Task.Run(() => System.Net.Dns.GetHostAddressesAsync(System.Net.Dns.GetHostName()))
+                                .GetAwaiter()
+                                .GetResult();
+            
             if (addresses == null)
                 return new System.Net.IPAddress[]{};
 
-            if (!excludeLoopback)
-                return addresses;
-
-            var adds = new List<IPAddress>();
-            var excluded = new List<IPAddress>();
-
-            adds.AddRange(addresses);
-            foreach (IPAddress address in adds)
-            {
-                if (System.Net.IPAddress.IsLoopback(address))
-                    excluded.Add(address);
-            }
-
-            foreach (IPAddress exc in excluded)
-            {
-                adds.Remove(exc);
-            }
-
-            return adds.ToArray();
+            return excludeLoopback
+                ? addresses.Where(add => !IPAddress.IsLoopback(add)).ToArray()
+                : addresses;
         }
 
 
@@ -122,16 +108,16 @@ namespace Xb.Net
         /// <param name="address"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public async static Task<bool> IsMyIpAddress(string address)
+        public static bool IsMyIpAddress(string address)
         {
             if (address == null)
                 return false;
 
-            var adds = await Xb.Net.Util.GetIpAddresses();
-            if (adds == null)
+            var addresses = Xb.Net.Util.GetIpAddresses();
+            if (addresses == null)
                 return false;
 
-            return adds.Any(add => add.ToString() == address);
+            return addresses.Any(add => add.ToString() == address);
         }
 
 
@@ -141,9 +127,11 @@ namespace Xb.Net
         /// <param name="hostName"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public async static Task<System.Net.IPAddress[]> GetIpAddresses(string hostName)
+        public static System.Net.IPAddress[] GetIpAddresses(string hostName)
         {
-            var entry = await System.Net.Dns.GetHostEntryAsync(hostName);
+            var entry = Task.Run(() => System.Net.Dns.GetHostEntryAsync(hostName))
+                            .GetAwaiter()
+                            .GetResult();
             return entry.AddressList;
         }
 
@@ -154,9 +142,11 @@ namespace Xb.Net
         /// <param name="ipAddress"></param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public async static Task<string> GetHostname(string ipAddress)
+        public static string GetHostname(string ipAddress)
         {
-            var entry = await System.Net.Dns.GetHostEntryAsync(ipAddress);
+            var entry = Task.Run(() => System.Net.Dns.GetHostEntryAsync(ipAddress))
+                            .GetAwaiter()
+                            .GetResult();
             return entry.HostName;
         }
     }

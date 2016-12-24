@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,45 @@ namespace Xb.File
 {
     public class Util
     {
+        /// <summary>
+        /// Remove file, directory recursive
+        /// ファイル／ディレクトリを再帰的に削除する
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="force"></param>
+        /// <remarks>C# recursive option bug, FUCK!</remarks>
+        public static void Delete(string path, bool force = false)
+        {
+            if (System.IO.File.Exists(path))
+            {
+                System.IO.File.Delete(path);
+                return;
+            }
+
+            if (Directory.Exists(path))
+            {
+                //remove files
+                var filePaths = Directory.GetFiles(path);
+                foreach (var filePath in filePaths)
+                {
+                    if(force)
+                        System.IO.File.SetAttributes(filePath, FileAttributes.Normal);
+
+                    System.IO.File.Delete(filePath);
+                }
+
+                //remove directory 
+                var directoryPaths = Directory.GetDirectories(path);
+                foreach (var directoryPath in directoryPaths)
+                {
+                    Xb.File.Util.Delete(directoryPath);
+                }
+
+                Directory.Delete(path);
+            }
+        }
+
+
         /// <summary>
         /// Get file-bytes array
         /// </summary>
@@ -19,23 +59,24 @@ namespace Xb.File
             if(!System.IO.File.Exists(fileName))
                 throw new FileNotFoundException($"Xb.File.Util.GetFileBytes: file not found [{fileName}]");
 
-            var stream = new System.IO.FileStream(fileName
-                                                , FileMode.Open
-                                                , FileAccess.Read);
-            var buffer = new byte[1024];
             var result = new List<byte>();
-            while (true)
+            using (var stream = new System.IO.FileStream(fileName
+                                                       , FileMode.Open
+                                                       , FileAccess.Read))
             {
-                var size = stream.Read(buffer, 0, buffer.Length);
-                if (size == 0)
-                    break;
+                var buffer = new byte[1024];
+                
+                while (true)
+                {
+                    var size = stream.Read(buffer, 0, buffer.Length);
+                    if (size == 0)
+                        break;
 
-                result.AddRange(size == buffer.Length 
-                                    ? buffer 
-                                    : buffer.Take(size));
+                    result.AddRange(size == buffer.Length
+                                        ? buffer
+                                        : buffer.Take(size));
+                }
             }
-
-            stream.Dispose();
 
             return result.ToArray();
         }
@@ -101,14 +142,16 @@ namespace Xb.File
             if(encoding == null)
                 throw new ArgumentNullException(nameof(encoding), $"Xb.File.Util.GetFileBytes: encoding null");
 
-            var stream = new System.IO.FileStream(fileName
-                                                , FileMode.Open
-                                                , FileAccess.Read);
-            var reader = new StreamReader(stream, encoding);
-            var result = reader.ReadToEnd();
-
-            reader.Dispose();
-            stream.Dispose();
+            string result = "";
+            using (var stream = new System.IO.FileStream(fileName
+                                                       , FileMode.Open
+                                                       , FileAccess.Read))
+            {
+                using (var reader = new StreamReader(stream, encoding))
+                {
+                    result = reader.ReadToEnd();
+                }
+            }
 
             return result;
         }
@@ -141,12 +184,13 @@ namespace Xb.File
                                     , byte[] bytes)
         {
             bytes = bytes ?? (new byte[] {});
-            
-            var stream = new System.IO.FileStream(fileName
-                                                , FileMode.Create
-                                                , FileAccess.Write);
-            stream.Write(bytes, 0, bytes.Length);
-            stream.Dispose();
+
+            using (var stream = new System.IO.FileStream(fileName
+                                                       , FileMode.Create
+                                                       , FileAccess.Write))
+            {
+                stream.Write(bytes, 0, bytes.Length);
+            }
         }
 
 

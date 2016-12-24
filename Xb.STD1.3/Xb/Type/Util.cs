@@ -53,8 +53,11 @@ namespace Xb.Type
                 {
                     value = 0;
                 }
-                
-                return decimal.Parse(value.ToString());
+
+                decimal result;
+                return decimal.TryParse(value.ToString(), out result)
+                        ? result
+                        : 0;
             }
             catch (Exception)
             {
@@ -78,7 +81,10 @@ namespace Xb.Type
                     value = 0;
                 }
 
-                return int.Parse(value.ToString());
+                int result;
+                return int.TryParse(value.ToString(), out result)
+                        ? result
+                        : 0;
             }
             catch (Exception)
             {
@@ -102,8 +108,11 @@ namespace Xb.Type
                 {
                     return DateTime.MinValue;
                 }
-                
-                return Convert.ToDateTime(value);
+
+                DateTime result;
+                return DateTime.TryParse(value.ToString(), out result)
+                        ? result
+                        : DateTime.MinValue;
             }
             catch (Exception)
             {
@@ -122,15 +131,16 @@ namespace Xb.Type
         {
             try
             {
-                if (DBNull.Value == value)
+                if (value == null 
+                    || DBNull.Value == value)
                 {
                     return TimeSpan.MinValue;
                 }
-                else if (value == null)
-                {
-                    return TimeSpan.MinValue;
-                }
-                return (TimeSpan)value;
+
+                TimeSpan result;
+                return TimeSpan.TryParse(value.ToString(), out result)
+                        ? result
+                        : TimeSpan.MinValue;
             }
             catch (Exception)
             {
