@@ -80,7 +80,7 @@ namespace Xb.App
             if (!System.IO.File.Exists(fullPath))
             {
                 Xb.File.Util.WriteText(fullPath
-                                     , Logger.FormatMessage("create log file"));
+                                     , Logger.FormatMessage("create log file\r"));
             }
         }
 
