@@ -22,6 +22,36 @@ namespace TestXb
             Trace.WriteLine($"{DateTime.Now.ToString("HH:mm:ss.fff")}: {message}");
         }
 
+
+        protected void OutHighlighted(params System.String[] messages)
+        {
+            var time = DateTime.Now;
+            var list = new List<string>();
+
+            list.Add("");
+            list.Add("");
+            list.Add(time.ToString("HH:mm:ss.fff") + ":");
+            list.Add("##################################################");
+            list.Add("#");
+
+            foreach (string message in messages)
+            {
+                var lines = message.Replace("\r\n", "\n").Replace("\r", "\n").Trim('\n').Split('\n');
+                foreach (var line in lines)
+                {
+                    list.Add($"# {line}");
+                }
+            }
+
+            list.Add("#");
+            list.Add("##################################################");
+            list.Add("");
+            list.Add("");
+
+            Trace.WriteLine(string.Join("\r\n", list));
+        }
+
+
         public virtual void Dispose()
         {
             this.Out("TestBase.Dispose.");
