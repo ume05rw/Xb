@@ -49,6 +49,7 @@
     <Compile Include="Xb\File\Tree.Node.cs" />
     <Compile Include="Xb\File\Util.cs" />
     <Compile Include="Xb\File\Zip.cs" />
+    <Compile Include="Xb\Net\Mail.cs" />
     <Compile Include="Xb\Net\Tcp.cs" />
     <Compile Include="Xb\Net\Util.cs" />
     <Compile Include="Xb\Type\Util.cs" />

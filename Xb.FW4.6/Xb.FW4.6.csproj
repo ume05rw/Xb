@@ -31,6 +31,18 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
+      <HintPath>..\packages\BouncyCastle.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MailKit, Version=1.10.0.0, Culture=neutral, PublicKeyToken=4e064fe7c44a8f1b, processorArchitecture=MSIL">
+      <HintPath>..\packages\MailKit.1.10.1\lib\net451\MailKit.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MimeKit, Version=1.10.0.0, Culture=neutral, PublicKeyToken=bede1c8a46c66814, processorArchitecture=MSIL">
+      <HintPath>..\packages\MimeKit.1.10.0\lib\net451\MimeKit.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
@@ -45,6 +57,7 @@
       <HintPath>..\packages\System.IO.Compression.ZipFile.4.0.1\lib\net46\System.IO.Compression.ZipFile.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Security" />
     <Reference Include="System.XML" />
     <Reference Include="Xb.Core, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Xb.Core.1.0.4\lib\net45\Xb.Core.dll</HintPath>
@@ -76,9 +89,6 @@
     </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\File\Zip.cs">
       <Link>Xb\File\Zip.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.STD1.3\Xb\Net\Mail.cs">
-      <Link>Xb\Net\Mail.cs</Link>
     </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\Net\Tcp.cs">
       <Link>Xb\Net\Tcp.cs</Link>

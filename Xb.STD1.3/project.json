@@ -1,6 +1,7 @@
 ﻿{
   "supports": {},
   "dependencies": {
+    "MailKit": "1.10.1",
     "Microsoft.NETCore.Portable.Compatibility": "1.0.1",
     "NETStandard.Library": "1.6.0",
     "System.Data.Common": "4.1.0",
