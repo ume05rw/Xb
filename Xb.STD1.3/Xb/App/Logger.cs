@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -6,22 +8,83 @@ using System.Threading.Tasks;
 namespace Xb.App
 {
     /// <summary>
-    /// Log-Writer, instance based
-    /// インスタンスベースのログ出力クラス
+    /// Log-Writer
+    /// ログ出力クラス
     /// </summary>
-    /// <remarks>
-    /// </remarks>
     public class Logger : IDisposable
     {
         /// <summary>
-        /// static log-writing method
+        /// Write log on static
+        /// ログを書き出す。
         /// </summary>
         /// <param name="message"></param>
-        public static void Log(string message
-                             , string fileName = null
-                             , string directory = null)
+        public static void Out(string message)
         {
-            Logger.Init(ref fileName, ref directory);
+            Logger.StaticOutput(Logger.FormatMessage(message));
+        }
+
+        /// <summary>
+        /// Write formatted-log on static
+        /// 値を差し込んだ文字列をログに書き出す。
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="values"></param>
+        public static void Out(string format, params object[] values)
+        {
+            Logger.StaticOutput(Logger.FormatMessage(string.Format(format, values)));
+        }
+
+        /// <summary>
+        /// Write Exception-info log on static
+        /// 例外情報をログに書き出す。
+        /// </summary>
+        /// <param name="ex"></param>
+        public static void Out(Exception ex)
+        {
+            Logger.StaticOutput(Logger.GetHighlightedText(Xb.Util.GetErrorString(ex)));
+        }
+
+        /// <summary>
+        /// Get hilighted text
+        /// </summary>
+        /// <param name="messages"></param>
+        private static string GetHighlightedText(params string[] messages)
+        {
+            var time = DateTime.Now;
+            var list = new List<string>();
+
+            list.Add("");
+            list.Add("");
+            list.Add(time.ToString("HH:mm:ss.fff") + ":");
+            list.Add("##################################################");
+            list.Add("#");
+
+            foreach (string message in messages)
+            {
+                var lines = message.Replace("\r\n", "\n").Replace("\r", "\n").Trim('\n').Split('\n');
+                foreach (var line in lines)
+                {
+                    list.Add($"# {line}");
+                }
+            }
+
+            list.Add("#");
+            list.Add("##################################################");
+            list.Add("");
+            list.Add("");
+
+            return string.Join("\r\n", list);
+        }
+
+        /// <summary>
+        /// output message to log file on static
+        /// </summary>
+        /// <param name="message"></param>
+        private static void StaticOutput(string message)
+        {
+            var fileName = $"xbstlogger_{DateTime.Now:yyyyMMdd}.log";
+            var directory = System.IO.Directory.GetCurrentDirectory();
+            Logger.Init(fileName, directory);
 
             var fullPath = System.IO.Path.Combine(directory, fileName);
 
@@ -31,9 +94,8 @@ namespace Xb.App
                 {
                     try
                     {
-                        var text = Logger.FormatMessage(message);
-                        writer.WriteLine(text);
-                        Xb.Util.Out(text);
+                        writer.WriteLine(message);
+                        System.Diagnostics.Debug.WriteLine(message);
                     }
                     catch (Exception ex)
                     {
@@ -51,14 +113,9 @@ namespace Xb.App
         /// </summary>
         /// <param name="fileName"></param>
         /// <param name="directory"></param>
-        private static void Init(ref string fileName
-                               , ref string directory)
+        private static void Init(string fileName
+                               , string directory)
         {
-            fileName = string.IsNullOrEmpty(fileName)
-                            ? DateTime.Now.ToString("yyyyMMdd") + "_log.txt"
-                            : fileName;
-            directory = directory ?? System.IO.Directory.GetCurrentDirectory();
-
             //not exist directory, try-create
             if (!System.IO.Directory.Exists(directory))
             {
@@ -80,7 +137,7 @@ namespace Xb.App
             if (!System.IO.File.Exists(fullPath))
             {
                 Xb.File.Util.WriteText(fullPath
-                                     , Logger.FormatMessage("create log file\r"));
+                                     , Logger.FormatMessage("create log file\r\n"));
             }
         }
 
@@ -110,7 +167,7 @@ namespace Xb.App
         /// Log-file path
         /// ログファイルのフルパス
         /// </summary>
-        public string Path { get; private set; }
+        private string _path;
 
 
         /// <summary>
@@ -122,12 +179,18 @@ namespace Xb.App
         /// <remarks></remarks>
         public Logger(string fileName = null, string directory = null)
         {
-            Logger.Init(ref fileName, ref directory);
+            fileName = string.IsNullOrEmpty(fileName)
+                            ? $"xblogger_{DateTime.Now:yyyyMMdd}.log"
+                            : fileName;
+            directory = directory ?? System.IO.Directory.GetCurrentDirectory();
 
-            this.Path = System.IO.Path.Combine(directory, fileName);
+            Logger.Init(fileName, directory);
+
+
+            this._path = System.IO.Path.Combine(directory, fileName);
 
             //open file on append-mode
-            this._stream = new System.IO.FileStream(this.Path
+            this._stream = new System.IO.FileStream(this._path
                                                   , FileMode.Append
                                                   , FileAccess.Write);
             this._writer = new System.IO.StreamWriter(this._stream
@@ -136,49 +199,83 @@ namespace Xb.App
 
 
         /// <summary>
-        /// Write message
+        /// output message to log file on instance
+        /// </summary>
+        /// <param name="message"></param>
+        /// <remarks></remarks>
+        private void InstanceOutput(string message)
+        {
+            try
+            {
+                this._writer.WriteLine(message);
+                System.Diagnostics.Debug.WriteLine(message);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out($"Xb.App.Logger.InstanceOutput: write failure [{message}]");
+                Xb.Util.Out(ex);
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Write log
         /// ログを書き出す。
         /// </summary>
         /// <param name="message"></param>
         /// <remarks></remarks>
         public void Write(string message)
         {
-            try
-            {
-                var text = Logger.FormatMessage(message);
-                this._writer.WriteLine(text);
-                Xb.Util.Out(text);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out($"Xb.App.Logger.Write: write failure [{message}]");
-                Xb.Util.Out(ex);
-                throw ex;
-            }
+            this.InstanceOutput(Logger.FormatMessage(message));
         }
-
 
         /// <summary>
-        /// Write message on async
-        /// ログを書き出す。
+        /// Write formatted-log
+        /// 値を差し込んだ文字列をログに書き出す。
         /// </summary>
-        /// <param name="message"></param>
-        /// <remarks></remarks>
-        public async Task WriteAsync(string message)
+        /// <param name="format"></param>
+        /// <param name="values"></param>
+        public void Write(string format, params object[] values)
         {
-            try
-            {
-                var text = Logger.FormatMessage(message);
-                await this._writer.WriteLineAsync(text);
-                Xb.Util.Out(text);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out($"Xb.App.Logger.WriteAsync: write failure [{message}]");
-                Xb.Util.Out(ex);
-                throw ex;
-            }
+            this.InstanceOutput(Logger.FormatMessage(string.Format(format, values)));
         }
+
+        /// <summary>
+        /// Write Exception-info log on static
+        /// 例外情報をログに書き出す。
+        /// </summary>
+        /// <param name="ex"></param>
+        public void Write(Exception ex)
+        {
+            this.InstanceOutput(Logger.GetHighlightedText(Xb.Util.GetErrorString(ex)));
+        }
+
+        //連続して書き込むとき排他できない
+        ///// <summary>
+        ///// Write message on async
+        ///// ログを非同期で書き出す。
+        ///// </summary>
+        ///// <param name="message"></param>
+        ///// <remarks></remarks>
+        //public void WriteAsync(string message)
+        //{
+        //    try
+        //    {
+        //        var text = Logger.FormatMessage(message);
+        //        Task.Run(() =>
+        //        {
+        //            Debug.WriteLine($"CanWrite?: {this._stream.CanWrite}");
+        //            this._writer.WriteLineAsync(Logger.FormatMessage(message));
+        //        });
+        //        Xb.Util.Out(text);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Xb.Util.Out($"Xb.App.Logger.WriteAsync: write failure [{message}]");
+        //        Xb.Util.Out(ex);
+        //        throw ex;
+        //    }
+        //}
 
 
         // 重複する呼び出しを検出するには
@@ -205,7 +302,7 @@ namespace Xb.App
                         catch (Exception) { }
                     }
 
-                    this.Path = null;
+                    this._path = null;
                 }
             }
             this._disposedValue = true;
