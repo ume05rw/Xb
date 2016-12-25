@@ -9,7 +9,7 @@ using MimeKit;
 
 namespace Xb.Net
 {
-    public class MailClient : IDisposable
+    public class MailSender : IDisposable
     {
         /// <summary>
         /// Smtp server
@@ -48,6 +48,11 @@ namespace Xb.Net
         public bool IsUseSsl { get; set; }
 
         /// <summary>
+        /// 認証後にEHLOを再送するか否か
+        /// </summary>
+        public bool EhloAfterAuth { get; set; }
+
+        /// <summary>
         /// Text encoding
         /// エンコード
         /// </summary>
@@ -70,7 +75,7 @@ namespace Xb.Net
         /// Constructor
         /// コンストラクタ
         /// </summary>
-        public MailClient(string fromAddress)
+        public MailSender(string fromAddress)
         {
             this.Server = "localhost";
             this.Port = 25;
@@ -79,6 +84,7 @@ namespace Xb.Net
             this.AuthPassword = "";
             this.Encoding = Encoding.UTF8;
             this.IsUseSsl = false;
+            this.EhloAfterAuth = true;
 
             this.FromAddress = fromAddress;
             this.FromName = fromAddress;
@@ -95,9 +101,9 @@ namespace Xb.Net
         /// <param name="toName"></param>
         /// <returns></returns>
         public async Task SendAsync(string bodyText
-                                  , string subject
-                                  , string toAddress
-                                  , string toName = null)
+            , string subject
+            , string toAddress
+            , string toName = null)
         {
             if (string.IsNullOrEmpty(bodyText))
                 throw new ArgumentNullException(nameof(bodyText), "Xb.Net.Mail.Send: bodyText null");
@@ -127,7 +133,7 @@ namespace Xb.Net
                 Text = bodyText
             };
 
-            await this.SendMultiAsync(new MimeMessage[] { message });
+            await this.SendMultiAsync(new MimeMessage[] {message});
             message = null;
         }
 
@@ -140,7 +146,7 @@ namespace Xb.Net
         /// <returns></returns>
         public async Task SendAsync(MimeMessage message)
         {
-            await this.SendMultiAsync(new MimeMessage[] { message });
+            await this.SendMultiAsync(new MimeMessage[] {message});
         }
 
 
@@ -154,48 +160,37 @@ namespace Xb.Net
         {
             await Task.Run(() =>
             {
+
                 using (var client = new SmtpClient())
                 {
-                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-                    client.Connect(this.Server, this.Port, this.IsUseSsl);
-
-                    client.AuthenticationMechanisms.Remove("XOAUTH2");
-
-                    if (this.IsAuth)
+                    try
                     {
-                        try
-                        {
-                            //var credential
-                            //    = new System.Net.NetworkCredential(this.AuthId
-                            //        , this.AuthPassword);
-                            //client.Authenticate(credential);
+                        client.QueryCapabilitiesAfterAuthenticating = this.EhloAfterAuth;
+                        client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                        client.Connect(this.Server, this.Port, this.IsUseSsl);
 
+                        client.AuthenticationMechanisms.Remove("XOAUTH2");
+
+                        if (this.IsAuth)
+                        {
                             client.Authenticate(this.AuthId, this.AuthPassword);
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
 
-                            //SMTP Error 503 [but you already said HELO]
-                            //BadCommandSequence,
-                            //throw ex;
+                            //if exception[BadCommandSequence], 503 "but you already said HELO"
+                            // -> EhloAfterAuth set false;
                         }
-                    }
 
-                    foreach (var message in messages)
-                    {
-                        try
+                        foreach (var message in messages)
                         {
                             client.Send(message);
                         }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            throw ex;
-                        }
-                    }
 
-                    client.Disconnect(true);
+                        client.Disconnect(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Xb.Util.Out(ex);
+                        throw ex;
+                    }
                 }
             });
         }

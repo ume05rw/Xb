@@ -121,13 +121,13 @@
     <Compile Include="Xb\Net\TcpTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Xb.STD1.3\Xb.STD1.3.csproj">
       <Project>{12d3c984-f508-47b8-9e82-99af6146729d}</Project>
       <Name>Xb.STD1.3</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

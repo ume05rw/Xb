@@ -90,8 +90,8 @@
     <Compile Include="..\Xb.STD1.3\Xb\File\Zip.cs">
       <Link>Xb\File\Zip.cs</Link>
     </Compile>
-    <Compile Include="..\Xb.STD1.3\Xb\Net\OldMail.cs">
-      <Link>Xb\Net\OldMail.cs</Link>
+    <Compile Include="..\Xb.STD1.3\Xb\Net\MailSender.cs">
+      <Link>Xb\Net\MailSender.cs</Link>
     </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\Net\Tcp.cs">
       <Link>Xb\Net\Tcp.cs</Link>
