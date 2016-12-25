@@ -120,7 +120,7 @@ namespace Xb.Net
         /// <remarks>
         /// ローカルSMTPサーバを想定。
         /// </remarks>
-        public Mail(string fromAddress)
+        public OldMail(string fromAddress)
         {
             this._smtpClient = new System.Net.Mail.SmtpClient();
             this._host = "localhost";
@@ -149,7 +149,7 @@ namespace Xb.Net
         /// GMailを想定。
         /// .Netの仕様上、SMTP over SSL（SMTP/SSL、SMTPS）には対応していない。
         /// </remarks>
-        public Mail(string authId,
+        public OldMail(string authId,
                     string authPassword,
                     string host = "localhost",
                     string fromAddress = null,
