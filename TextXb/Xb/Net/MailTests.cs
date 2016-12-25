@@ -5,97 +5,126 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using TestXb;
 
 namespace TextXb
 {
     [TestClass()]
-    public class MailTests
+    public class MailTests : TestBase
     {
-        //var client = new Xb.Net.MailClient("everybody@nobody.com");
-        //client.AuthId = "XXXX@XXXX.com";
-        //client.AuthPassword = "********";
-        //await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+        private Xb.Net.MailClient _client;
+        private string _sendTo;
+
+        public MailTests()
+        {
+            //this._client = new Xb.Net.MailClient("everybody@nobody.com");
+            //this._client.AuthId = "XXXX@XXXX.com";
+            //this._client.AuthPassword = "********";
+            //this._sendTo = "anyone@nobody.com";
+
+            this._client = new Xb.Net.MailClient("everybody@nobody.com");
+            this._client.AuthId = "XXXX@XXXX.com";
+            this._client.AuthPassword = "********";
+            this._sendTo = "anyone@nobody.com";
+        }
+
+
 
         [TestMethod()]
         public async Task  GmailSendTest1()
         {
-            var client = new Xb.Net.MailClient("everybody@nobody.com");
-            client.Server = "smtp.gmail.com";
-            client.Port = 465;          //
-            client.IsUseSsl = true;     //465接続時はSSL使用
-            client.IsAuth = true;       //
+            this._client.Server = "smtp.gmail.com";
+            this._client.Port = 465;          //
+            this._client.IsUseSsl = true;     //465接続時はSSL使用
+            this._client.IsAuth = true;       //
+            this._client.FromName = "nobody_knows";
 
-            client.AuthId = "XXXX@XXXX.com";
-            client.AuthPassword = "********";
-            client.FromName = "oresamada-";
-
-            await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+            await this._client.SendAsync("hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ"
+                                 , "マルチバイト"
+                                 , this._sendTo
+                                 , "マルチバイト");
         }
 
         [TestMethod()]
         public async Task GmailSendTest2()
         {
-            var client = new Xb.Net.MailClient("everybody@nobody.com");
-            client.Server = "smtp.gmail.com";
-            client.Port = 587;          //
-            client.IsUseSsl = false;    //
-            client.IsAuth = true;       //
+            this._client.Server = "smtp.gmail.com";
+            this._client.Port = 587;          //
+            this._client.IsUseSsl = false;    //
+            this._client.IsAuth = true;       //
+            this._client.FromName = "nobody_knows";
 
-            client.AuthId = "XXXX@XXXX.com";
-            client.AuthPassword = "********";
-            client.FromName = "oresamada-";
-
-            await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+            await this._client.SendAsync("hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ"
+                                 , "マルチバイト"
+                                 , this._sendTo
+                                 , "マルチバイト");
         }
+
+
+        [TestMethod()]
+        public async Task MultiSendTest1()
+        {
+            this._client.Server = "smtp.gmail.com";
+            this._client.Port = 465;          //
+            this._client.IsUseSsl = true;     //465接続時はSSL使用
+            this._client.IsAuth = true;       //
+            this._client.FromName = "nobody_knows";
+
+            throw new NotImplementedException();
+        }
+
 
         [TestMethod()]
         public async Task HotmailMailSendTest()
         {
             //Outlook.comの送信はめちゃくちゃ遅い
+            this._client.Server = "smtp-mail.outlook.com";
+            this._client.Port = 587;          //
+            this._client.IsUseSsl = false;    //
+            this._client.IsAuth = true;       //
+            this._client.FromName = "nobody_knows";
 
-            var client = new Xb.Net.MailClient("everybody@nobody.com");
-            client.Server = "smtp-mail.outlook.com";
-            client.Port = 587;          //
-            client.IsUseSsl = false;    //
-            client.IsAuth = true;       //
-
-            client.AuthId = "XXXX@XXXX.com";
-            client.AuthPassword = "********";
-            client.FromName = "oresamada-";
-
-            await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+            await this._client.SendAsync("hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ"
+                                 , "マルチバイト"
+                                 , this._sendTo
+                                 , "マルチバイト");
         }
 
         [TestMethod()]
         public async Task MuumuuMailSendTest()
         {
-            var client = new Xb.Net.MailClient("everybody@nobody.com");
-            client.Server = "smtp.muumuu-mail.com";
-            client.Port = 465;          //
-            client.IsUseSsl = true;     //465接続時はSSL使用
-            client.IsAuth = true;       //ムームーメールは認証時エラーが出た。[but you already said HELO ...]
+            this._client.Server = "smtp.muumuu-mail.com";
+            this._client.Port = 465;          //
+            this._client.IsUseSsl = true;     //465接続時はSSL使用
+            this._client.IsAuth = true;       //ムームーメールは認証時エラーが出た。[but you already said HELO ...]
+            this._client.FromName = "nobody_knows";
 
-            client.AuthId = "XXXX@XXXX.com";
-            client.AuthPassword = "********";
-            client.FromName = "umemoto";
-
-            await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+            await this._client.SendAsync("hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ"
+                                 , "マルチバイト"
+                                 , this._sendTo
+                                 , "マルチバイト");
         }
 
         [TestMethod()]
         public async Task ElseMailSendTest()
         {
-            var client = new Xb.Net.MailClient("everybody@nobody.com");
-            client.Server = "mw2p0hhgkv.bizmw.com";
-            client.Port = 587;          //
-            client.IsUseSsl = false;    //
-            client.IsAuth = true;       //※ここのサーバはどちらでもよかった。
+            this._client.Server = "mw2p0hhgkv.bizmw.com";
+            this._client.Port = 587;          //
+            this._client.IsUseSsl = false;    //
+            this._client.IsAuth = true;       //※ここのサーバはどちらでもよかった。
+            this._client.FromName = "nobody_knows";
 
-            client.AuthId = "XXXX@XXXX.com";
-            client.AuthPassword = "********";
-            client.FromName = "oresamada-";
+            await this._client.SendAsync("hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ"
+                                 , "マルチバイト"
+                                 , this._sendTo
+                                 , "マルチバイト");
+        }
 
-            await client.SendAsync("マルチバイト", "hello!\r\nマルチバイト\r\nhow?\r改行コード\nいろいろ", "anyone@nobody.com", "マルチバイト");
+
+        public override void Dispose()
+        {
+            this._client.Dispose();
+            base.Dispose();
         }
     }
 }

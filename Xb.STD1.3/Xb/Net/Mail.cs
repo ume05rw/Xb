@@ -9,7 +9,7 @@ using MimeKit;
 
 namespace Xb.Net
 {
-    public class MailClient
+    public class MailClient : IDisposable
     {
         /// <summary>
         /// Smtp server
@@ -110,16 +110,16 @@ namespace Xb.Net
 
             var message = new MimeMessage();
             message.From.Add(string.IsNullOrEmpty(this.FromName)
-                                ? new MailboxAddress(this.FromAddress)
-                                : new MailboxAddress(this.Encoding
-                                                   , this.FromName
-                                                   , this.FromAddress));
+                ? new MailboxAddress(this.FromAddress)
+                : new MailboxAddress(this.Encoding
+                    , this.FromName
+                    , this.FromAddress));
 
             message.To.Add(string.IsNullOrEmpty(toName)
-                                ? new MailboxAddress(toAddress)
-                                : new MailboxAddress(this.Encoding
-                                                   , toName
-                                                   , toAddress));
+                ? new MailboxAddress(toAddress)
+                : new MailboxAddress(this.Encoding
+                    , toName
+                    , toAddress));
 
             message.Subject = subject;
             message.Body = new TextPart("plain")
@@ -127,8 +127,7 @@ namespace Xb.Net
                 Text = bodyText
             };
 
-            await this.SendAsync(message);
-
+            await this.SendMultiAsync(new MimeMessage[] { message });
             message = null;
         }
 
@@ -141,6 +140,18 @@ namespace Xb.Net
         /// <returns></returns>
         public async Task SendAsync(MimeMessage message)
         {
+            await this.SendMultiAsync(new MimeMessage[] { message });
+        }
+
+
+        /// <summary>
+        /// Send mail by MimeMessage
+        /// MimeMessageオブジェクトでメールを送信する
+        /// </summary>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public async Task SendMultiAsync(IEnumerable<MimeMessage> messages)
+        {
             await Task.Run(() =>
             {
                 using (var client = new SmtpClient())
@@ -151,9 +162,39 @@ namespace Xb.Net
                     client.AuthenticationMechanisms.Remove("XOAUTH2");
 
                     if (this.IsAuth)
-                        client.Authenticate(this.AuthId, this.AuthPassword);
+                    {
+                        try
+                        {
+                            //var credential
+                            //    = new System.Net.NetworkCredential(this.AuthId
+                            //        , this.AuthPassword);
+                            //client.Authenticate(credential);
 
-                    client.Send(message);
+                            client.Authenticate(this.AuthId, this.AuthPassword);
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+
+                            //SMTP Error 503 [but you already said HELO]
+                            //BadCommandSequence,
+                            //throw ex;
+                        }
+                    }
+
+                    foreach (var message in messages)
+                    {
+                        try
+                        {
+                            client.Send(message);
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            throw ex;
+                        }
+                    }
+
                     client.Disconnect(true);
                 }
             });
@@ -161,10 +202,20 @@ namespace Xb.Net
 
 
         /// <summary>
-        /// Get MimeMessage-object for send
+        /// Get MimeMessage-object for send - see: http://www.mimekit.net/docs/html/CreatingMessages.htm
         /// 送信メッセージオブジェクトを取得する。
         /// </summary>
         /// <returns></returns>
+        /// <remarks>
+        /// GitHub - jstedfast/MailKit: A cross-platform .NET library for IMAP, POP3, and SMTP.
+        /// https://github.com/jstedfast/MailKit
+        /// 
+        /// Introduction(MailKit official document)
+        /// http://www.mimekit.net/docs/html/Introduction.htm
+        /// 
+        /// c# - How to send email by using MailKit? - Stack Overflow
+        /// http://stackoverflow.com/questions/33496290/how-to-send-email-by-using-mailkit
+        /// </remarks>
         public MimeMessage GetMessage()
         {
             var message = new MimeMessage();
@@ -175,5 +226,31 @@ namespace Xb.Net
                                                    , this.FromAddress));
             return message;
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // 重複する呼び出しを検出するには
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    this.Server = null;
+                    this.AuthId = null;
+                    this.AuthPassword = null;
+                    this.Encoding = null;
+                    this.FromAddress = null;
+                    this.FromName = null;
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
     }
 }
