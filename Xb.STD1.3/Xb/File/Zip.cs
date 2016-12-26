@@ -159,13 +159,16 @@ namespace Xb.File
             this._encoding = encoding ?? Encoding.UTF8;
             this.ReadOnly = true;
 
-
             if (readableStream == null)
             {
                 throw new ArgumentNullException(nameof(readableStream), $"Xb.File.Zip.Constructor: readableStream null");
             }
 
-            this._stream = readableStream;
+            //一旦メモリストリームに吸い出す。
+            var bytes = Xb.File.Util.GetBytes(readableStream);
+            var memStream = new MemoryStream(bytes);
+
+            this._stream = memStream;
             this._archive = new ZipArchive(this._stream
                                          , ZipArchiveMode.Read
                                          , false
@@ -189,7 +192,7 @@ namespace Xb.File
             {
                 using (var reader = new StreamReader(stream))
                 {
-                    var buffer = new byte[1024];
+                    var buffer = new byte[Xb.File.Util.BufferSize];
 
                     while (true)
                     {

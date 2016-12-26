@@ -11,6 +11,11 @@ namespace Xb.File
     public class Util
     {
         /// <summary>
+        /// Stream read buffer size
+        /// </summary>
+        public static int BufferSize { get; set; } = 1048576; //default 1MB
+
+        /// <summary>
         /// Remove file, directory recursive
         /// ファイル／ディレクトリを再帰的に削除する
         /// </summary>
@@ -64,7 +69,7 @@ namespace Xb.File
                                                        , FileMode.Open
                                                        , FileAccess.Read))
             {
-                var buffer = new byte[1024];
+                var buffer = new byte[Xb.File.Util.BufferSize];
                 
                 while (true)
                 {
@@ -76,6 +81,8 @@ namespace Xb.File
                                         ? buffer
                                         : buffer.Take(size));
                 }
+
+                buffer = null;
             }
 
             return result.ToArray();
@@ -96,7 +103,7 @@ namespace Xb.File
                 throw new ArgumentException("Xb.File.Util.GetBytes: stream cannot read");
 
             var result = new List<byte>();
-            var buffer = new byte[1024];
+            var buffer = new byte[Xb.File.Util.BufferSize];
 
             while (true)
             {
@@ -108,6 +115,8 @@ namespace Xb.File
                                     ? buffer
                                     : buffer.Take(size));
             }
+
+            buffer = null;
 
             return result.ToArray();
         }
