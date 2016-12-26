@@ -249,7 +249,7 @@ namespace Xb.File
 
 
         /// <summary>
-        /// 
+        /// Create new entry in archive
         /// </summary>
         /// <param name="entryName"></param>
         /// <returns></returns>
