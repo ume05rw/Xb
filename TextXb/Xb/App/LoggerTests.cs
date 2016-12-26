@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -11,6 +13,24 @@ namespace TextXb
     [TestClass()]
     public class LoggerTests : TestBase
     {
+        [TestMethod()]
+        public void AnyTest()
+        {
+            var entry = Task.Run(() => System.Net.Dns.GetHostEntryAsync("COCO4"))
+                            .GetAwaiter()
+                            .GetResult();
+            var entry2 = entry.AddressList
+                        .Where(addr => addr.AddressFamily == AddressFamily.InterNetwork)
+                        .ToArray();
+
+            var createMethod = typeof(System.Security.Cryptography.SHA1).GetMethod("Create", new Type[0]);
+            var _hash = (System.Security.Cryptography.SHA1)createMethod.Invoke(null, new object[] { });
+
+            var ict = (ICryptoTransform)_hash;
+            Assert.IsTrue(true);
+        }
+
+
         [TestMethod()]
         public void LogTest()
         {

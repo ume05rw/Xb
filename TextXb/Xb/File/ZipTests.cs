@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.IO.Compression;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace TextXb
@@ -108,7 +109,7 @@ namespace TextXb
                                             .IndexOf("file2.txt"
                                                    , StringComparison.Ordinal) >= 0);
 
-            var bytes = zip.GetBytes(entry.FullName);
+            var bytes = zip.GetBytes(entry);
             Assert.AreEqual("中身を書き込んであるんだよ", Encoding.UTF8.GetString(bytes));
             Assert.AreEqual(Xb.File.Util.GetText(@"baseDir\dir1\file2.txt"), Encoding.UTF8.GetString(bytes));
 
@@ -153,7 +154,7 @@ namespace TextXb
                                             .IndexOf("file2.txt"
                                                    , StringComparison.Ordinal) >= 0);
 
-            zip.Delete(entry.FullName);
+            zip.Delete(entry);
             Assert.IsFalse(zip.Entries.Any(ent => ent.FullName.IndexOf("file2.txt", StringComparison.Ordinal) >= 0));
             zip.Dispose();
 
@@ -184,16 +185,17 @@ namespace TextXb
                                  .IndexOf("file2.txt"
                                         , StringComparison.Ordinal) >= 0);
 
-            zip.WriteBytes(entry.FullName, Encoding.UTF8.GetBytes("中身を更新してみたよ"));
+            entry = zip.WriteBytes(entry, Encoding.UTF8.GetBytes("中身を更新してみたよ"));
 
-            var bytes = zip.GetBytes(entry.FullName);
+            var bytes = zip.GetBytes(entry);
             Assert.AreEqual("中身を更新してみたよ", Encoding.UTF8.GetString(bytes));
             Assert.AreNotEqual(Xb.File.Util.GetText(@"baseDir\dir1\file2.txt"), Encoding.UTF8.GetString(bytes));
 
             //create new entry
             var newEntryString = @"baseDir/dir1/newFile.txt";
-            zip.WriteBytes(newEntryString, Encoding.UTF8.GetBytes("新しいファイルですよ"));
-            bytes = zip.GetBytes(newEntryString);
+            entry = zip.GetNewEntry(newEntryString);
+            entry = zip.WriteBytes(entry, Encoding.UTF8.GetBytes("新しいファイルですよ"));
+            bytes = zip.GetBytes(entry);
             Assert.AreEqual("新しいファイルですよ", Encoding.UTF8.GetString(bytes));
 
             zip.Dispose();

@@ -26,11 +26,10 @@ namespace Xb.Net
             text = text ?? "";
             encoding = encoding ?? Encoding.UTF8;
             
-            System.Security.Cryptography.HMACMD5 cryptHandler = null;
             var result = "";
 
             var textBytes = encoding.GetBytes(text);
-            cryptHandler = new System.Security.Cryptography.HMACMD5();
+            var cryptHandler = System.Security.Cryptography.MD5.Create();
             var hash = cryptHandler.ComputeHash(textBytes);
 
             foreach (byte elem in hash)
@@ -62,7 +61,7 @@ namespace Xb.Net
             encoding = encoding ?? Encoding.UTF8;
             
             var textBytes = encoding.GetBytes(text);
-            var cryptHandler = new System.Security.Cryptography.HMACSHA1();
+            var cryptHandler = System.Security.Cryptography.SHA1.Create();
             var hash = cryptHandler.ComputeHash(textBytes);
 
             var result = "";

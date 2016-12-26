@@ -69,13 +69,44 @@ namespace Xb.File
                 while (true)
                 {
                     var size = stream.Read(buffer, 0, buffer.Length);
-                    if (size == 0)
+                    if (size <= 0)
                         break;
 
                     result.AddRange(size == buffer.Length
                                         ? buffer
                                         : buffer.Take(size));
                 }
+            }
+
+            return result.ToArray();
+        }
+
+
+        /// <summary>
+        /// Get file-bytes array
+        /// </summary>
+        /// <param name="readableStream"></param>
+        /// <returns></returns>
+        public static byte[] GetBytes(Stream readableStream)
+        {
+            if (readableStream == null)
+                throw new ArgumentNullException(nameof(readableStream), "Xb.File.Util.GetBytes: readableStream null");
+
+            if(!readableStream.CanRead)
+                throw new ArgumentException("Xb.File.Util.GetBytes: stream cannot read");
+
+            var result = new List<byte>();
+            var buffer = new byte[1024];
+
+            while (true)
+            {
+                var size = readableStream.Read(buffer, 0, buffer.Length);
+                if (size <= 0)
+                    break;
+
+                result.AddRange(size == buffer.Length
+                                    ? buffer
+                                    : buffer.Take(size));
             }
 
             return result.ToArray();
@@ -94,7 +125,18 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Get file-text, auto-detect encoding
+        /// Get file-bytes array on async
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        public async static Task<byte[]> GetBytesAsync(Stream readableStream)
+        {
+            return await Task.Run(() => Xb.File.Util.GetBytes(readableStream));
+        }
+
+
+        /// <summary>
+        /// Get file-text, auto-detect encoding for Japanese
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
@@ -107,7 +149,7 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Get file-text on async, auto-detect encoding
+        /// Get file-text on async, auto-detect encoding for Japanese
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
@@ -180,6 +222,22 @@ namespace Xb.File
 
 
         /// <summary>
+        /// Write byte-array to stream
+        /// </summary>
+        /// <param name="writableStream"></param>
+        /// <param name="bytes"></param>
+        public static void WriteBytes(Stream writableStream
+                                    , byte[] bytes)
+        {
+            if (!writableStream.CanWrite)
+                throw new ArgumentException("Xb.File.Util.WriteBytes: stream cannot write");
+
+            bytes = bytes ?? (new byte[] { });
+            writableStream.Write(bytes, 0, bytes.Length);
+        }
+
+
+        /// <summary>
         /// Write byte-array to file on async
         /// </summary>
         /// <param name="fileName"></param>
@@ -189,6 +247,19 @@ namespace Xb.File
                                                , byte[] bytes)
         {
             await Task.Run(() => Xb.File.Util.WriteBytes(fileName, bytes));
+        }
+
+
+        /// <summary>
+        /// Write byte-array to stream on async
+        /// </summary>
+        /// <param name="writableStream"></param>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        public async static Task WriteBytesAsync(Stream writableStream
+                                               , byte[] bytes)
+        {
+            await Task.Run(() => Xb.File.Util.WriteBytes(writableStream, bytes));
         }
 
 

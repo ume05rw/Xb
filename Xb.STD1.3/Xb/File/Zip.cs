@@ -79,7 +79,7 @@ namespace Xb.File
 
 
 
-        private FileStream _stream;
+        private Stream _stream;
         private ZipArchive _archive;
         private Encoding _encoding;
 
@@ -150,6 +150,30 @@ namespace Xb.File
 
 
         /// <summary>
+        /// Constructor
+        /// コンストラクタ
+        /// </summary>
+        public Zip(Stream readableStream
+                 , Encoding encoding = null)
+        {
+            this._encoding = encoding ?? Encoding.UTF8;
+            this.ReadOnly = true;
+
+
+            if (readableStream == null)
+            {
+                throw new ArgumentNullException(nameof(readableStream), $"Xb.File.Zip.Constructor: readableStream null");
+            }
+
+            this._stream = readableStream;
+            this._archive = new ZipArchive(this._stream
+                                         , ZipArchiveMode.Read
+                                         , false
+                                         , this._encoding);
+        }
+
+
+        /// <summary>
         /// Get byte-array in zip
         /// Zipエントリの内容をバイト配列で取得する。
         /// </summary>
@@ -185,23 +209,6 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Get byte-array in zip
-        /// Zipエントリの内容をバイト配列で取得する。
-        /// </summary>
-        /// <param name="entryString"></param>
-        /// <returns></returns>
-        public byte[] GetBytes(string entryString)
-        {
-            var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
-
-            if(entry == null)
-                throw new ArgumentOutOfRangeException(nameof(entry), $"Xb.File.Zip.GetBytes: entry not found [{entry}]");
-
-            return this.GetBytes(entry);
-        }
-
-
-        /// <summary>
         /// Get byte-array in zip on async
         /// Zipエントリの内容をバイト配列で取得する。
         /// </summary>
@@ -210,18 +217,6 @@ namespace Xb.File
         public async Task<byte[]> GetBytesAsync(ZipArchiveEntry entry)
         {
             return await Task.Run(() => this.GetBytes(entry));
-        }
-
-
-        /// <summary>
-        /// Get byte-array in zip on async
-        /// Zipエントリの内容をバイト配列で取得する。
-        /// </summary>
-        /// <param name="entryString"></param>
-        /// <returns></returns>
-        public async Task<byte[]> GetBytesAsync(string entryString)
-        {
-            return await Task.Run(() => this.GetBytes(entryString));
         }
 
 
@@ -243,25 +238,6 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Delete entry
-        /// Zipファイル内のエントリを削除する
-        /// </summary>
-        /// <param name="entryString"></param>
-        public void Delete(string entryString)
-        {
-            if (this.ReadOnly)
-                throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
-
-            var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
-
-            if (entry == null)
-                throw new ArgumentOutOfRangeException(nameof(entryString), $"Xb.File.Zip.Delete: entry not found [{entryString}]");
-
-            this.Delete(entry);
-        }
-
-
-        /// <summary>
         /// Delete entry on async
         /// Zipファイル内のエントリを削除する
         /// </summary>
@@ -273,15 +249,14 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Delete entry on async
-        /// Zipファイル内のエントリを削除する
+        /// 
         /// </summary>
-        /// <param name="entryString"></param>
-        public async Task DeleteAsync(string entryString)
+        /// <param name="entryName"></param>
+        /// <returns></returns>
+        public ZipArchiveEntry GetNewEntry(string entryName)
         {
-            await Task.Run(() => { this.Delete(entryString); });
+            return this._archive.CreateEntry(entryName);
         }
-
 
         /// <summary>
         /// Overwrite entry
@@ -289,8 +264,14 @@ namespace Xb.File
         /// </summary>
         /// <param name="entry"></param>
         /// <param name="bytes"></param>
-        public void WriteBytes(ZipArchiveEntry entry
-                             , byte[] bytes)
+        /// <returns>Updated(New) Entry</returns>
+        /// <remarks>
+        /// entry are REPLACED.
+        /// When overwriting entry a value smaller than the existing data,
+        /// remains surplus of existing data.
+        /// </remarks>
+        public ZipArchiveEntry WriteBytes(ZipArchiveEntry entry
+                                        , byte[] bytes)
         {
             if(this.ReadOnly)
                 throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
@@ -308,6 +289,8 @@ namespace Xb.File
                     stream.Write(bytes, 0, bytes.Length);
                 }
             }
+
+            return entry;
         }
 
 
@@ -315,47 +298,89 @@ namespace Xb.File
         /// Overwrite entry on async
         /// Zipファイル内のエントリを上書きする
         /// </summary>
-        /// <param name="entryString"></param>
+        /// <param name="entry"></param>
         /// <param name="bytes"></param>
-        public void WriteBytes(string entryString
-                             , byte[] bytes)
+        /// <returns>Updated(New) Entry</returns>
+        public async Task<ZipArchiveEntry> WriteBytesAsync(ZipArchiveEntry entry
+                                                         , byte[] bytes)
         {
-            if (this.ReadOnly)
-                throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
-
-            var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
-
-            if (entry == null)
-                entry = this._archive.CreateEntry(entryString);
-
-            this.WriteBytes(entry, bytes);
+            return await Task.Run(() => this.WriteBytes(entry, bytes));
         }
 
 
-        /// <summary>
-        /// Overwrite entry on async
-        /// Zipファイル内のエントリを上書きする
-        /// </summary>
-        /// <param name="entryString"></param>
-        /// <param name="bytes"></param>
-        public async Task WriteBytesAsync(ZipArchiveEntry entry
-                                        , byte[] bytes)
-        {
-            await Task.Run(() => { this.WriteBytes(entry, bytes); });
-        }
-
-
-        /// <summary>
-        /// Overwrite entry on async
-        /// Zipファイル内のエントリを上書きする
-        /// </summary>
-        /// <param name="entryString"></param>
-        /// <param name="bytes"></param>
-        public async Task WriteBytesAsync(string entryString
-                                        , byte[] bytes)
-        {
-            await Task.Run(() => { this.WriteBytes(entryString, bytes); });
-        }
+        ///// <summary>
+        ///// Get byte-array in zip
+        ///// Zipエントリの内容をバイト配列で取得する。
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        ///// <returns></returns>
+        //public byte[] GetBytes(string entryString)
+        //{
+        //    var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
+        //    if(entry == null)
+        //        throw new ArgumentOutOfRangeException(nameof(entry), $"Xb.File.Zip.GetBytes: entry not found [{entry}]");
+        //    return this.GetBytes(entry);
+        //}
+        ///// <summary>
+        ///// Get byte-array in zip on async
+        ///// Zipエントリの内容をバイト配列で取得する。
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        ///// <returns></returns>
+        //public async Task<byte[]> GetBytesAsync(string entryString)
+        //{
+        //    return await Task.Run(() => this.GetBytes(entryString));
+        //}
+        ///// <summary>
+        ///// Delete entry
+        ///// Zipファイル内のエントリを削除する
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        //public void Delete(string entryString)
+        //{
+        //    if (this.ReadOnly)
+        //        throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
+        //    var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
+        //    if (entry == null)
+        //        throw new ArgumentOutOfRangeException(nameof(entryString), $"Xb.File.Zip.Delete: entry not found [{entryString}]");
+        //    this.Delete(entry);
+        //}
+        ///// <summary>
+        ///// Delete entry on async
+        ///// Zipファイル内のエントリを削除する
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        //public async Task DeleteAsync(string entryString)
+        //{
+        //    await Task.Run(() => { this.Delete(entryString); });
+        //}
+        ///// <summary>
+        ///// Overwrite entry on async
+        ///// Zipファイル内のエントリを上書きする
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        ///// <param name="bytes"></param>
+        //public void WriteBytes(string entryString
+        //                     , byte[] bytes)
+        //{
+        //    if (this.ReadOnly)
+        //        throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
+        //    var entry = this._archive.Entries.FirstOrDefault(ent => ent.FullName == entryString);
+        //    if (entry == null)
+        //        entry = this._archive.CreateEntry(entryString);
+        //    this.WriteBytes(entry, bytes);
+        //}
+        ///// <summary>
+        ///// Overwrite entry on async
+        ///// Zipファイル内のエントリを上書きする
+        ///// </summary>
+        ///// <param name="entryString"></param>
+        ///// <param name="bytes"></param>
+        //public async Task WriteBytesAsync(string entryString
+        //                                , byte[] bytes)
+        //{
+        //    await Task.Run(() => { this.WriteBytes(entryString, bytes); });
+        //}
 
 
 
