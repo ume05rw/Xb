@@ -59,8 +59,8 @@
     </Reference>
     <Reference Include="System.Security" />
     <Reference Include="System.XML" />
-    <Reference Include="Xb.Core, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Xb.Core.1.0.4\lib\net45\Xb.Core.dll</HintPath>
+    <Reference Include="Xb.Core, Version=1.0.8.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Xb.Core.1.0.8\lib\net45\Xb.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -78,11 +78,29 @@
     <Compile Include="..\Xb.STD1.3\Xb\App\Logger.cs">
       <Link>Xb\App\Logger.cs</Link>
     </Compile>
-    <Compile Include="..\Xb.STD1.3\Xb\File\Tree.cs">
-      <Link>Xb\File\Tree.cs</Link>
+    <Compile Include="..\Xb.STD1.3\Xb\File\FileTree.cs">
+      <Link>Xb\File\FileTree.cs</Link>
     </Compile>
-    <Compile Include="..\Xb.STD1.3\Xb\File\Tree.Node.cs">
-      <Link>Xb\File\Tree.Node.cs</Link>
+    <Compile Include="..\Xb.STD1.3\Xb\File\FileTree.Node.cs">
+      <Link>Xb\File\FileTree.Node.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\INode.cs">
+      <Link>Xb\File\Tree\INode.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\ITree.cs">
+      <Link>Xb\File\Tree\ITree.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\NodeBase.cs">
+      <Link>Xb\File\Tree\NodeBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\NodeEventArgs.cs">
+      <Link>Xb\File\Tree\NodeEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\SerializableNode.cs">
+      <Link>Xb\File\Tree\SerializableNode.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\Tree\TreeBase.cs">
+      <Link>Xb\File\Tree\TreeBase.cs</Link>
     </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\File\Util.cs">
       <Link>Xb\File\Util.cs</Link>

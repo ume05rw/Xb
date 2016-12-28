@@ -11,11 +11,6 @@ namespace Xb.File
     public class Util
     {
         /// <summary>
-        /// Stream read buffer size
-        /// </summary>
-        public static int BufferSize { get; set; } = 1048576; //default 1MB
-
-        /// <summary>
         /// Remove file, directory recursive
         /// ファイル／ディレクトリを再帰的に削除する
         /// </summary>
@@ -64,28 +59,15 @@ namespace Xb.File
             if(!System.IO.File.Exists(fileName))
                 throw new FileNotFoundException($"Xb.File.Util.GetFileBytes: file not found [{fileName}]");
 
-            var result = new List<byte>();
+            byte[] result;
             using (var stream = new System.IO.FileStream(fileName
                                                        , FileMode.Open
                                                        , FileAccess.Read))
             {
-                var buffer = new byte[Xb.File.Util.BufferSize];
-                
-                while (true)
-                {
-                    var size = stream.Read(buffer, 0, buffer.Length);
-                    if (size <= 0)
-                        break;
-
-                    result.AddRange(size == buffer.Length
-                                        ? buffer
-                                        : buffer.Take(size));
-                }
-
-                buffer = null;
+                result = Xb.File.Util.GetBytes(stream);
             }
 
-            return result.ToArray();
+            return result;
         }
 
 
@@ -102,23 +84,16 @@ namespace Xb.File
             if(!readableStream.CanRead)
                 throw new ArgumentException("Xb.File.Util.GetBytes: stream cannot read");
 
-            var result = new List<byte>();
-            var buffer = new byte[Xb.File.Util.BufferSize];
+            var memStream = new MemoryStream();
+            var buffer = new byte[Xb.Byte.BufferSize];
 
-            while (true)
-            {
-                var size = readableStream.Read(buffer, 0, buffer.Length);
-                if (size <= 0)
-                    break;
-
-                result.AddRange(size == buffer.Length
-                                    ? buffer
-                                    : buffer.Take(size));
-            }
+            int size;
+            while ((size = readableStream.Read(buffer, 0, buffer.Length)) > 0)
+                memStream.Write(buffer, 0, size);
 
             buffer = null;
 
-            return result.ToArray();
+            return memStream.ToArray();
         }
 
 
@@ -219,7 +194,8 @@ namespace Xb.File
         public static void WriteBytes(string fileName
                                     , byte[] bytes)
         {
-            bytes = bytes ?? (new byte[] {});
+            if (bytes == null || bytes.Length <= 0)
+                return;
 
             using (var stream = new System.IO.FileStream(fileName
                                                        , FileMode.Create
@@ -241,7 +217,9 @@ namespace Xb.File
             if (!writableStream.CanWrite)
                 throw new ArgumentException("Xb.File.Util.WriteBytes: stream cannot write");
 
-            bytes = bytes ?? (new byte[] { });
+            if (bytes == null || bytes.Length <= 0)
+                return;
+
             writableStream.Write(bytes, 0, bytes.Length);
         }
 

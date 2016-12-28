@@ -22,7 +22,7 @@ namespace TextXb
             Assert.IsFalse(Directory.Exists(baseDir));
 
             var structure = this.BuildDirectoryTree();
-            var tree = await Xb.File.Tree.GetTreeRecursiveAsync(baseDir);
+            var tree = await Xb.File.FileTree.GetTreeRecursiveAsync(baseDir);
 
             this.OutHighlighted(tree.Paths);
 
@@ -32,7 +32,7 @@ namespace TextXb
                 var node = tree[path];
 
                 var info = new System.IO.DirectoryInfo(path);
-                Assert.AreEqual(Tree.Node.NodeType.Directory, node.Type);
+                Assert.AreEqual(FileTree.Node.NodeType.Directory, node.Type);
                 Assert.AreEqual(System.IO.Path.GetFileName(path), node.Name);
                 Assert.AreEqual("", node.Extension);
                 Assert.AreEqual(info.LastWriteTime, node.UpdateDate);
@@ -49,7 +49,7 @@ namespace TextXb
                 var node = tree[path];
 
                 var info = new System.IO.FileInfo(path);
-                Assert.AreEqual(Tree.Node.NodeType.File, node.Type);
+                Assert.AreEqual(FileTree.Node.NodeType.File, node.Type);
                 Assert.AreEqual(System.IO.Path.GetFileName(path), node.Name);
                 Assert.AreEqual(System.IO.Path.GetDirectoryName(path), node.ParentPath);
                 Assert.AreEqual(System.IO.Path.GetExtension(path), node.Extension);
@@ -72,7 +72,7 @@ namespace TextXb
 
             //get all recursive
             var structure = this.BuildDirectoryTree();
-            var tree = await Xb.File.Tree.GetTreeRecursiveAsync(baseDir);
+            var tree = await Xb.File.FileTree.GetTreeRecursiveAsync(baseDir);
 
             this.OutHighlighted(tree.Paths);
 
@@ -83,7 +83,7 @@ namespace TextXb
                 Assert.IsTrue(structure.Files.Contains(path));
 
                 var info = new System.IO.FileInfo(path);
-                Assert.AreEqual(Tree.Node.NodeType.File, node.Type);
+                Assert.AreEqual(FileTree.Node.NodeType.File, node.Type);
                 Assert.AreEqual(System.IO.Path.GetFileName(path), node.Name);
                 Assert.AreEqual(System.IO.Path.GetDirectoryName(path), node.ParentPath);
                 Assert.AreEqual(System.IO.Path.GetExtension(path), node.Extension);
@@ -104,7 +104,7 @@ namespace TextXb
                 Assert.IsTrue(structure.Files.Contains(path));
 
                 var info = new System.IO.FileInfo(path);
-                Assert.AreEqual(Tree.Node.NodeType.File, node.Type);
+                Assert.AreEqual(FileTree.Node.NodeType.File, node.Type);
                 Assert.AreEqual(System.IO.Path.GetFileName(path), node.Name);
                 Assert.AreEqual(System.IO.Path.GetDirectoryName(path), node.ParentPath);
                 Assert.AreEqual(System.IO.Path.GetExtension(path), node.Extension);
@@ -119,12 +119,12 @@ namespace TextXb
 
 
             var subdir1 = tree.FindAll("subdir1")
-                              .FirstOrDefault(n => n.Type == Tree.Node.NodeType.Directory);
+                              .FirstOrDefault(n => n.Type == FileTree.Node.NodeType.Directory);
 
             Assert.AreNotEqual(null, subdir1);
             var path2 = subdir1.FullPath;
             var info2 = new System.IO.DirectoryInfo(path2);
-            Assert.AreEqual(Tree.Node.NodeType.Directory, subdir1.Type);
+            Assert.AreEqual(FileTree.Node.NodeType.Directory, subdir1.Type);
             Assert.AreEqual(System.IO.Path.GetFileName(path2), subdir1.Name);
             Assert.AreEqual("", subdir1.Extension);
             Assert.AreEqual(info2.LastWriteTime, subdir1.UpdateDate);
@@ -136,7 +136,7 @@ namespace TextXb
             Assert.IsTrue((new string[] { "subFile1.txt", "subFile2.txt" }).Contains(node3.Name));
 
             //get direct-child only
-            tree = Xb.File.Tree.GetTree(baseDir);
+            tree = Xb.File.FileTree.GetTree(baseDir);
 
             this.OutHighlighted(tree.Paths);
 
@@ -147,7 +147,7 @@ namespace TextXb
                 Assert.IsTrue(structure.Files.Contains(path));
 
                 var info = new System.IO.FileInfo(path);
-                Assert.AreEqual(Tree.Node.NodeType.File, node.Type);
+                Assert.AreEqual(FileTree.Node.NodeType.File, node.Type);
                 Assert.AreEqual(System.IO.Path.GetFileName(path), node.Name);
                 Assert.AreEqual(System.IO.Path.GetDirectoryName(path), node.ParentPath);
                 Assert.AreEqual(System.IO.Path.GetExtension(path), node.Extension);
@@ -171,14 +171,14 @@ namespace TextXb
 
             //get all recursive
             var structure = this.BuildDirectoryTree();
-            var tree = await Xb.File.Tree.GetTreeRecursiveAsync(baseDir);
+            var tree = await Xb.File.FileTree.GetTreeRecursiveAsync(baseDir);
 
             this.OutHighlighted(tree.Paths);
 
 
             //get subdir, child file
             var subDir1 = tree.FindAll("subdir1")
-                  .FirstOrDefault(n => n.Type == Tree.Node.NodeType.Directory);
+                  .FirstOrDefault(n => n.Type == FileTree.Node.NodeType.Directory);
             Assert.AreNotEqual(null, subDir1);
 
             var subFile1 = subDir1.Find("subFile1");
@@ -217,10 +217,10 @@ namespace TextXb
             //
             Xb.File.Util.Delete(baseDir);
             structure = this.BuildDirectoryTree();
-            tree = await Xb.File.Tree.GetTreeRecursiveAsync(baseDir);
+            tree = await Xb.File.FileTree.GetTreeRecursiveAsync(baseDir);
 
             subDir1 = tree.FindAll("subdir1")
-                          .FirstOrDefault(n => n.Type == Tree.Node.NodeType.Directory);
+                          .FirstOrDefault(n => n.Type == FileTree.Node.NodeType.Directory);
 
             Assert.AreEqual(14, tree.Nodes.Length);
             Assert.AreNotEqual(null, tree.Find("subdir1"));

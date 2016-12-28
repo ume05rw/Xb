@@ -1,25 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Xb.File
+namespace Xb.File.Tree
 {
-    public partial class Tree : IDisposable
+    public abstract partial class TreeBase : Xb.File.Tree.ITree
     {
         /// <summary>
         /// Nodes array
         /// 配下のノード配列
         /// </summary>
-        private Dictionary<string, Xb.File.Tree.Node> _nodes;
+        protected Dictionary<string, Xb.File.Tree.INode> NodeDictionary;
 
 
         /// <summary>
         /// Root Node
+        /// Treeのルートノード
         /// </summary>
-        public Xb.File.Tree.Node RootNode { get; private set; }
+        public Xb.File.Tree.INode RootNode { get; protected set; }
 
 
         /// <summary>
@@ -28,63 +28,96 @@ namespace Xb.File
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public Xb.File.Tree.Node this[string path]
-        {
-            get
-            {
-                return this._nodes.ContainsKey(path)
-                            ? this._nodes[path]
-                            : null;
-            }
-            protected set
-            {
-                this._nodes[path] = value;
-            }
-        }
+        public Xb.File.Tree.INode this[string path] => this.NodeDictionary[path];
 
 
         /// <summary>
         /// Node-Path array(key)
         /// ノードパス配列
         /// </summary>
-        public string[] Paths
-        {
-            get { return this._nodes.Select(pair => pair.Key).ToArray(); }
-        }
+        public string[] Paths =>  this.NodeDictionary.Select(pair => pair.Key).ToArray(); 
 
 
         /// <summary>
         /// Node array
         /// ノード配列
         /// </summary>
-        public Xb.File.Tree.Node[] Nodes
-        {
-            get { return this._nodes.Select(pair => pair.Value).ToArray(); }
-        }
+        public Xb.File.Tree.INode[] Nodes => this.NodeDictionary.Select(pair => pair.Value).ToArray();
 
 
         /// <summary>
-        /// Constructor
-        /// コンストラクタ
+        /// Initialize
         /// </summary>
-        public Tree(string rootPath)
+        /// <param name="rootPath"></param>
+        /// <param name="rootNode"></param>
+        protected void Init(string rootPath
+                          , Xb.File.Tree.INode rootNode)
         {
-            this.RootNode = new Xb.File.Tree.Node(this, rootPath);
+            this.RootNode = rootNode;
 
-            this._nodes = new Dictionary<string, Node>();
-            this._nodes.Add(this.RootNode.FullPath, this.RootNode);
+            this.NodeDictionary = new Dictionary<string, Xb.File.Tree.INode>
+            {
+                {this.RootNode.FullPath, this.RootNode}
+            };
+
+            this.RootNode.ChildAdded += this.OnNodeChildAdded;
+            this.RootNode.Deleted += this.OnNodeDeleted;
         }
 
 
         /// <summary>
-        /// Get matched Node-objects by fullpath(key)
-        /// パス(キー)が合致したNodeオブジェクトの配列を返す
+        /// Event when child-node is added to node-tree
+        /// 配下のノードに子ノードが追加されたときのイベント
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected virtual void OnNodeChildAdded(object sender, NodeEventArgs e)
+        {
+            this.NodeDictionary.Add(e.Node.FullPath, e.Node);
+
+            e.Node.ChildAdded += this.OnNodeChildAdded;
+            e.Node.Deleted += this.OnNodeDeleted;
+        }
+
+
+        /// <summary>
+        /// Event when node is deleted on node-tree
+        /// 配下のノードが削除されたときのイベント
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected virtual void OnNodeDeleted(object sender, NodeEventArgs e)
+        {
+            e.Node.ChildAdded -= this.OnNodeChildAdded;
+            e.Node.Deleted -= this.OnNodeDeleted;
+
+            this.NodeDictionary[e.Node.FullPath] = null;
+            this.NodeDictionary.Remove(e.Node.FullPath);
+        }
+
+
+        /// <summary>
+        /// Get matched one Node-object by fullpath
+        /// パスが合致したNodeオブジェクトを返す
         /// </summary>
         /// <param name="paths"></param>
         /// <returns></returns>
-        private Xb.File.Tree.Node[] GetNodes(List<string> paths)
+        public Xb.File.Tree.INode GetNode(string path)
         {
-            return this._nodes.Where(pair => paths.Contains(pair.Key))
+            return this.NodeDictionary.ContainsKey(path)
+                        ? this.NodeDictionary[path]
+                        : null;
+        }
+
+        /// <summary>
+        /// Get matched Node-objects by fullpath
+        /// パスが合致したNodeオブジェクトの配列を返す
+        /// </summary>
+        /// <param name="paths"></param>
+        /// <returns></returns>
+        public Xb.File.Tree.INode[] GetNodes(ICollection<string> paths)
+        {
+            return this.NodeDictionary.Where(pair => paths.Contains(pair.Key))
                               .Select(pair => pair.Value)
                               .ToArray();
         }
@@ -96,9 +129,9 @@ namespace Xb.File
         /// </summary>
         /// <param name="needle"></param>
         /// <returns></returns>
-        public Xb.File.Tree.Node Find(string needle)
+        public Xb.File.Tree.INode Find(string needle)
         {
-            return this._nodes
+            return this.NodeDictionary
                        .Where(pair => pair.Key.IndexOf(needle
                                                      , StringComparison.Ordinal) >= 0)
                        .Select(pair => pair.Value)
@@ -112,14 +145,15 @@ namespace Xb.File
         /// </summary>
         /// <param name="needle"></param>
         /// <returns></returns>
-        public Xb.File.Tree.Node[] FindAll(string needle)
+        public Xb.File.Tree.INode[] FindAll(string needle)
         {
-            return this._nodes
+            return this.NodeDictionary
                        .Where(pair => pair.Key.IndexOf(needle
                                                      , StringComparison.Ordinal) >= 0)
                        .Select(pair => pair.Value)
                        .ToArray();
         }
+
 
 
         /// <summary>
@@ -139,11 +173,9 @@ namespace Xb.File
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static Xb.File.Tree GetTree(string path)
+        public static Xb.File.Tree.TreeBase GetTree(string path)
         {
-            var result = new Xb.File.Tree(path);
-            result.RootNode.Scan();
-            return result;
+            throw new NotImplementedException("");
         }
 
 
@@ -153,11 +185,9 @@ namespace Xb.File
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static async Task<Xb.File.Tree> GetTreeRecursiveAsync(string path)
+        public static async Task<Xb.File.Tree.TreeBase> GetTreeRecursiveAsync(string path)
         {
-            var result = new Xb.File.Tree(path);
-            await result.RootNode.ScanRecursiveAsync();
-            return result;
+            throw new NotImplementedException("");
         }
 
 
@@ -166,7 +196,7 @@ namespace Xb.File
         /// Delimiter char
         /// パスの区切り文字
         /// </summary>
-        private static readonly char[] DelimiterChars = new char[] { '\\', '/' };
+        protected static readonly char[] DelimiterChars = new char[] { '\\', '/' };
 
         /// <summary>
         /// Format path-string
@@ -174,13 +204,12 @@ namespace Xb.File
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        private static string FormatPath(string path)
+        public static string FormatPath(string path)
         {
             return (path == null)
                         ? ""
-                        : path.TrimEnd(Xb.File.Tree.DelimiterChars);
+                        : path.TrimEnd(Xb.File.Tree.TreeBase.DelimiterChars);
         }
-
 
 
         #region IDisposable Support
@@ -192,19 +221,12 @@ namespace Xb.File
             {
                 if (disposing)
                 {
-                    foreach (var pair in this._nodes)
-                        pair.Value.Dispose();
-
-                    this._nodes = null;
-
-                    this.RootNode = null;
 
                 }
                 disposedValue = true;
             }
         }
 
-        // このコードは、破棄可能なパターンを正しく実装できるように追加されました。
         public void Dispose()
         {
             Dispose(true);

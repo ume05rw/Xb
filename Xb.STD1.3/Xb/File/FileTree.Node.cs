@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Xb.File
 {
-    public partial class Tree
+    public partial class FileTree
     {
         /// <summary>
         /// File-system node
@@ -26,7 +26,7 @@ namespace Xb.File
             /// <summary>
             /// Xb.File.Tree
             /// </summary>
-            public Xb.File.Tree Tree { get; private set; }
+            public Xb.File.FileTree Tree { get; private set; }
 
             /// <summary>
             /// Parent-Node full-path
@@ -44,13 +44,13 @@ namespace Xb.File
             /// Parent-node
             /// 親ノード
             /// </summary>
-            public Xb.File.Tree.Node Parent => this.Tree[this._parentPath];
+            public Xb.File.FileTree.Node Parent => this.Tree[this._parentPath];
 
             /// <summary>
             /// Child-Nodes array
             /// 子ノード配列
             /// </summary>
-            public Xb.File.Tree.Node[] Children => this.Tree.GetNodes(this._childPaths);
+            public Xb.File.FileTree.Node[] Children => this.Tree.GetNodes(this._childPaths);
 
             /// <summary>
             /// Node-name (not full-path)
@@ -99,7 +99,7 @@ namespace Xb.File
             /// <remarks>
             /// get infomation from file-system.
             /// </remarks>
-            public Node(Xb.File.Tree tree
+            public Node(Xb.File.FileTree tree
                       , string path)
             {
                 if (tree == null)
@@ -121,7 +121,7 @@ namespace Xb.File
                     this.Name = System.IO.Path.GetFileName(path);
                     this.Extension = System.IO.Path.GetExtension(path);
                     this.UpdateDate = (new System.IO.FileInfo(path)).LastWriteTime;
-                    this._parentPath = Xb.File.Tree.FormatPath(System.IO.Path.GetDirectoryName(path));
+                    this._parentPath = Xb.File.FileTree.FormatPath(System.IO.Path.GetDirectoryName(path));
                 }
                 else if (System.IO.Directory.Exists(path))
                 {
@@ -129,7 +129,7 @@ namespace Xb.File
                     this.Name = System.IO.Path.GetFileName(path);
                     this.Extension = "";
                     this.UpdateDate = (new System.IO.DirectoryInfo(path)).LastWriteTime;
-                    this._parentPath = Xb.File.Tree.FormatPath(System.IO.Path.GetDirectoryName(path));
+                    this._parentPath = Xb.File.FileTree.FormatPath(System.IO.Path.GetDirectoryName(path));
                 }
                 else
                 {
@@ -154,7 +154,7 @@ namespace Xb.File
             /// <remarks>
             /// passing all infomation
             /// </remarks>
-            public Node(Xb.File.Tree tree
+            public Node(Xb.File.FileTree tree
                       , string path
                       , DateTime updateDate
                       , bool isDirectory)
@@ -177,7 +177,7 @@ namespace Xb.File
                     this.Name = System.IO.Path.GetFileName(path);
                     this.Extension = System.IO.Path.GetExtension(path);
                     this.UpdateDate = updateDate;
-                    this._parentPath = Xb.File.Tree.FormatPath(System.IO.Path.GetDirectoryName(path));
+                    this._parentPath = Xb.File.FileTree.FormatPath(System.IO.Path.GetDirectoryName(path));
                 }
                 else if (System.IO.Directory.Exists(path))
                 {
@@ -185,7 +185,7 @@ namespace Xb.File
                     this.Name = System.IO.Path.GetFileName(path);
                     this.Extension = "";
                     this.UpdateDate = updateDate;
-                    this._parentPath = Xb.File.Tree.FormatPath(System.IO.Path.GetDirectoryName(path));
+                    this._parentPath = Xb.File.FileTree.FormatPath(System.IO.Path.GetDirectoryName(path));
                 }
 
                 this.FullPath = System.IO.Path.Combine(this._parentPath, this.Name);
@@ -221,10 +221,10 @@ namespace Xb.File
                 try
                 {
                     children.AddRange(System.IO.Directory.GetFiles(this.FullPath)
-                                                         .Select(Xb.File.Tree.FormatPath)
+                                                         .Select(Xb.File.FileTree.FormatPath)
                                                          .ToArray());
                     children.AddRange(System.IO.Directory.GetDirectories(this.FullPath)
-                                                         .Select(Xb.File.Tree.FormatPath)
+                                                         .Select(Xb.File.FileTree.FormatPath)
                                                          .ToArray());
                 }
                 catch (Exception)
@@ -246,7 +246,7 @@ namespace Xb.File
                 //新しく追加されたパスをループ
                 foreach (var path in children.Where(path => !this._childPaths.Contains(path)))
                 {
-                    var node = new Xb.File.Tree.Node(this.Tree, path);
+                    var node = new Xb.File.FileTree.Node(this.Tree, path);
                     this.Tree._nodes.Add(path, node);
                     this._childPaths.Add(path);
                 }
@@ -281,7 +281,7 @@ namespace Xb.File
             /// 子ノードを追加する
             /// </summary>
             /// <param name="childNode"></param>
-            public void AddChild(Xb.File.Tree.Node childNode)
+            public void AddChild(Xb.File.FileTree.Node childNode)
             {
                 if(!this._childPaths.Contains(childNode.FullPath))
                     this._childPaths.Add(childNode.FullPath);
@@ -295,7 +295,7 @@ namespace Xb.File
             /// 子ノード配列を追加する
             /// </summary>
             /// <param name="childNodes"></param>
-            public void AddRangeChildren(IEnumerable<Xb.File.Tree.Node> childNodes)
+            public void AddRangeChildren(IEnumerable<Xb.File.FileTree.Node> childNodes)
             {
                 foreach (var childNode in childNodes)
                     this.AddChild(childNode);
@@ -306,7 +306,7 @@ namespace Xb.File
             /// 子ノードを管理用配列から削除する
             /// </summary>
             /// <param name="childNode"></param>
-            public void RemoveChild(Xb.File.Tree.Node childNode)
+            public void RemoveChild(Xb.File.FileTree.Node childNode)
             {
                 if (this._childPaths.Contains(childNode.FullPath))
                     this._childPaths.Remove(childNode.FullPath);
@@ -318,9 +318,9 @@ namespace Xb.File
             /// 配下の全ノードを再帰的に取得する
             /// </summary>
             /// <returns></returns>
-            public Xb.File.Tree.Node[] GetAllChildrenRecursive()
+            public Xb.File.FileTree.Node[] GetAllChildrenRecursive()
             {
-                var result = new List<Xb.File.Tree.Node>();
+                var result = new List<Xb.File.FileTree.Node>();
 
                 foreach (var path in this._childPaths)
                 {
@@ -344,7 +344,7 @@ namespace Xb.File
             /// </summary>
             /// <param name="needle"></param>
             /// <returns></returns>
-            public Xb.File.Tree.Node Find(string needle)
+            public Xb.File.FileTree.Node Find(string needle)
             {
                 foreach (var path in this._childPaths)
                 {
@@ -377,9 +377,9 @@ namespace Xb.File
             /// </summary>
             /// <param name="needle"></param>
             /// <returns></returns>
-            public Xb.File.Tree.Node[] FindAll(string needle)
+            public Xb.File.FileTree.Node[] FindAll(string needle)
             {
-                var result = new List<Xb.File.Tree.Node>();
+                var result = new List<Xb.File.FileTree.Node>();
 
                 foreach (var path in this._childPaths)
                 {

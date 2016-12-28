@@ -90,7 +90,7 @@ namespace Xb.File
         public bool ReadOnly { get; private set; }
 
         /// <summary>
-        /// Entries
+        /// Zip Archive Entry
         /// </summary>
         public ReadOnlyCollection<ZipArchiveEntry> Entries => this._archive.Entries;
 
@@ -160,9 +160,7 @@ namespace Xb.File
             this.ReadOnly = true;
 
             if (readableStream == null)
-            {
                 throw new ArgumentNullException(nameof(readableStream), $"Xb.File.Zip.Constructor: readableStream null");
-            }
 
             //一旦メモリストリームに吸い出す。
             var bytes = Xb.File.Util.GetBytes(readableStream);
@@ -187,27 +185,16 @@ namespace Xb.File
             if(!this._archive.Entries.Contains(entry))
                 throw new ArgumentOutOfRangeException(nameof(entry), $"Xb.File.Zip.GetBytes: entry not found [{entry}]");
 
-            var result = new List<byte>();
+            var memStream = new MemoryStream();
             using (var stream = entry.Open())
             {
-                using (var reader = new StreamReader(stream))
-                {
-                    var buffer = new byte[Xb.File.Util.BufferSize];
-
-                    while (true)
-                    {
-                        var size = stream.Read(buffer, 0, buffer.Length);
-                        if (size == 0)
-                            break;
-
-                        result.AddRange(size == buffer.Length
-                                            ? buffer
-                                            : buffer.Take(size));
-                    }
-                }
+                var buffer = new byte[Xb.Byte.BufferSize];
+                int size;
+                while ((size = stream.Read(buffer, 0, buffer.Length)) > 0)
+                    memStream.Write(buffer, 0, size);
             }
 
-            return result.ToArray();
+            return memStream.ToArray();
         }
 
 
@@ -287,10 +274,7 @@ namespace Xb.File
 
             using (var stream = entry.Open())
             {
-                using (var writer = new StreamWriter(stream))
-                {
-                    stream.Write(bytes, 0, bytes.Length);
-                }
+                stream.Write(bytes, 0, bytes.Length);
             }
 
             return entry;
