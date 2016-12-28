@@ -17,14 +17,33 @@ namespace Xb.File.Tree
             Directory
         }
 
+        /// <summary>
+        /// Child add event handler
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         public delegate void ChildAddEventHandler(object sender, NodeEventArgs e);
+
+        /// <summary>
+        /// Child added event
+        /// </summary>
         public event ChildAddEventHandler ChildAdded;
 
+        /// <summary>
+        /// Delete-myself event handler
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         public delegate void DeleteEventHandler(object sender, NodeEventArgs e);
+
+        /// <summary>
+        /// Deleteed-myself event
+        /// </summary>
         public event DeleteEventHandler Deleted;
 
         /// <summary>
-        /// Xb.File.Tree.ITree
+        /// Tree(= node manager) object
+        /// ノード管理オブジェクト
         /// </summary>
         public virtual Xb.File.Tree.ITree Tree { get; protected set; }
 
@@ -152,6 +171,8 @@ namespace Xb.File.Tree
         /// </summary>
         public virtual void Scan()
         {
+            throw new NotImplementedException("Xb.File.Tree.NodeBase.Scan: Execute only subclass");
+
             //自分自身を示すパスが実システム上に存在しなくなったら、破棄する。
             //this.RemoveMeIfNotExists();
 
@@ -309,6 +330,43 @@ namespace Xb.File.Tree
 
 
         /// <summary>
+        /// Get byte-array of node on async
+        /// ノードのデータをバイト配列で取得する
+        /// </summary>
+        /// <returns></returns>
+        public virtual async Task<byte[]> GetBytesAsync()
+        {
+            return await Task.Run(() => this.GetBytes());
+        }
+
+
+        /// <summary>
+        /// Get byte-array of node
+        /// ノードのデータをバイト配列で取得する
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
+        public virtual byte[] GetBytes(long offset, int length)
+        {
+            throw new NotImplementedException("Xb.File.Tree.NodeBase.GetBytes: Execute only subclass");
+        }
+
+
+        /// <summary>
+        /// Get byte-array of node on async
+        /// ノードのデータをバイト配列で取得する
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
+        public virtual async Task<byte[]> GetBytesAsync(long offset, int length)
+        {
+            return await Task.Run(() => this.GetBytes(offset, length));
+        }
+
+
+        /// <summary>
         /// Overwrite data of node
         /// バイト配列データをノードに上書きする。
         /// </summary>
@@ -317,6 +375,18 @@ namespace Xb.File.Tree
         {
             throw new NotImplementedException("Xb.File.Tree.NodeBase.WriteBytes: Execute only subclass");
         }
+
+
+        /// <summary>
+        /// Overwrite data of node on async
+        /// バイト配列データをノードに上書きする。
+        /// </summary>
+        /// <param name="bytes"></param>
+        public virtual async Task WriteBytesAsync(byte[] bytes)
+        {
+            await Task.Run(() => this.WriteBytes(bytes));
+        }
+
 
 
         /// <summary>

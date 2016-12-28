@@ -16,7 +16,7 @@ namespace Xb.File.Tree
 
 
         /// <summary>
-        /// Root Node
+        /// Root node on tree
         /// Treeのルートノード
         /// </summary>
         public Xb.File.Tree.INode RootNode { get; protected set; }
@@ -32,14 +32,14 @@ namespace Xb.File.Tree
 
 
         /// <summary>
-        /// Node-Path array(key)
+        /// Node-path array of all nodes
         /// ノードパス配列
         /// </summary>
         public string[] Paths =>  this.NodeDictionary.Select(pair => pair.Key).ToArray(); 
 
 
         /// <summary>
-        /// Node array
+        /// Node array of all nodes
         /// ノード配列
         /// </summary>
         public Xb.File.Tree.INode[] Nodes => this.NodeDictionary.Select(pair => pair.Value).ToArray();
@@ -173,7 +173,7 @@ namespace Xb.File.Tree
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static Xb.File.Tree.TreeBase GetTree(string path)
+        public static Xb.File.Tree.ITree GetTree(string path)
         {
             throw new NotImplementedException("");
         }
@@ -185,7 +185,7 @@ namespace Xb.File.Tree
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static async Task<Xb.File.Tree.TreeBase> GetTreeRecursiveAsync(string path)
+        public static async Task<Xb.File.Tree.ITree> GetTreeRecursiveAsync(string path)
         {
             throw new NotImplementedException("");
         }
@@ -215,13 +215,21 @@ namespace Xb.File.Tree
         #region IDisposable Support
         private bool disposedValue = false; // 重複する呼び出しを検出するには
 
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
                 if (disposing)
                 {
+                    //dispose all node recursive
+                    this.RootNode.Dispose();
 
+                    if(this.NodeDictionary.Count > 0)
+                        throw new Exception("想定外やで！！！！！！！！！！！！！");
+
+                    this.RootNode = null;
+                    this.NodeDictionary = null;
                 }
                 disposedValue = true;
             }
