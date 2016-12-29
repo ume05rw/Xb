@@ -30,6 +30,14 @@ namespace Xb.File.Tree
         Xb.File.Tree.INode[] Children { get; }
 
         /// <summary>
+        /// Node indexer
+        /// ノード要素インデクサ
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        Xb.File.Tree.INode this[string name] { get; }
+
+        /// <summary>
         /// Node-name (not full-path)
         /// ノード名称
         /// </summary>

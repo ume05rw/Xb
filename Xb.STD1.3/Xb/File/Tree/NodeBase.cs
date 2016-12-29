@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -59,6 +60,20 @@ namespace Xb.File.Tree
         /// </summary>
         public Xb.File.Tree.INode[] Children => this.Tree.GetNodes(this.ChildPaths);
 
+        /// <summary>
+        /// Node indexer
+        /// ノード要素インデクサ
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public Xb.File.Tree.INode this[string name]
+        {
+            get
+            {
+                var fullPath = System.IO.Path.Combine(this.FullPath, name);
+                return this.Tree.GetNode(Xb.File.Tree.TreeBase.FormatPath(fullPath));
+            }
+        }
 
         /// <summary>
         /// Parent-Node full-path
@@ -104,9 +119,37 @@ namespace Xb.File.Tree
         /// ルートノードか否か
         /// is root node?
         /// </summary>
-        public bool IsRootNode => (this.Parent == null);
+        public bool IsRootNode => (this.Tree.RootNode == this);
 
 
+
+        /// <summary>
+        /// Constructor
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="tree"></param>
+        /// <param name="path"></param>
+        protected NodeBase(Xb.File.Tree.ITree tree
+            , string path)
+        {
+            if (tree == null)
+            {
+                Xb.Util.Out($"Xb.File.Tree.NodeBase.Constructor: tree null");
+                throw new ArgumentException($"Xb.File.TreeBase.Node.Constructor: tree null");
+            }
+
+            if (string.IsNullOrEmpty(path))
+            {
+                Xb.Util.Out($"Xb.File.Tree.NodeBase.Constructor: path null");
+                throw new ArgumentException($"Xb.File.TreeBase.Node.Constructor: path null");
+            }
+
+            this.Name = System.IO.Path.GetFileName(path);
+            this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
+            this.FullPath = TreeBase.FormatPath(System.IO.Path.Combine(this.ParentPath, this.Name));
+            this.Tree = tree;
+            this.ChildPaths = new List<string>();
+        }
 
 
         /// <summary>
@@ -118,9 +161,9 @@ namespace Xb.File.Tree
         /// <param name="updateDate"></param>
         /// <param name="type"></param>
         protected NodeBase(Xb.File.Tree.ITree tree
-                         , string path
-                         , DateTime updateDate
-                         , NodeType type = NodeType.File)
+            , string path
+            , DateTime updateDate
+            , NodeType type = NodeType.File)
         {
             if (tree == null)
             {
@@ -139,26 +182,25 @@ namespace Xb.File.Tree
                 case NodeType.File:
 
                     this.Type = NodeType.File;
-                    this.Name = System.IO.Path.GetFileName(path);
-                    this.Extension = System.IO.Path.GetExtension(path);
-                    this.UpdateDate = updateDate;
-                    this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
+                    this.Extension = System.IO.Path.GetExtension(path).TrimStart('.');
 
                     break;
+
                 case NodeType.Directory:
 
                     this.Type = NodeType.Directory;
-                    this.Name = System.IO.Path.GetFileName(path);
                     this.Extension = "";
-                    this.UpdateDate = updateDate;
-                    this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
 
                     break;
 
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(type), $"Xb.File.Tree.NodeBase.Constructor: undefined type[{type}]");
+                    throw new ArgumentOutOfRangeException(nameof(type),
+                        $"Xb.File.Tree.NodeBase.Constructor: undefined type[{type}]");
             }
 
+            this.Name = System.IO.Path.GetFileName(path);
+            this.UpdateDate = updateDate;
+            this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
             this.FullPath = TreeBase.FormatPath(System.IO.Path.Combine(this.ParentPath, this.Name));
             this.Tree = tree;
             this.ChildPaths = new List<string>();
@@ -173,19 +215,17 @@ namespace Xb.File.Tree
         {
             throw new NotImplementedException("Xb.File.Tree.NodeBase.Scan: Execute only subclass");
 
-            //自分自身を示すパスが実システム上に存在しなくなったら、破棄する。
-            //this.RemoveMeIfNotExists();
-
-            //以下はディレクトリのみ。ファイルは子が居ないので。
-            if (this.Type == NodeType.File)
-                return;
-
-            //実システム上の自身直下ノードのパス文字列配列を取得する。
-            //var nowChildren = this.GetChildrenPaths();
-                
-            //以前存在していて現在は無いパスのノードを削除する。
-
-            //実システム上に新しく追加されたパスのノードを追加
+            //implement flow
+            //1.If not exists this-node element of real systems, dispose myself
+            //  自分自身を示すパスが実システム上に存在しなくなったら、破棄する。
+            //2.If node.Type is `File`, exit
+            //  自分自身のNodetypeが`File`のとき、終了。ファイルは子が居ないので。
+            //3.Get all child-elements path of real systems
+            //  直下のファイル／ディレクトリのパス文字列配列を取得する。
+            //4.If not exists child-node on real systems, dispose child-node 
+            //  配下ノードとして存在するものの実システム上には無いものを、破棄する。
+            //5.Create new-child node, and passing this.`AddChild` method
+            //  INodeインスタンスを生成し、`AddChild`メソッドに渡す。
         }
 
 
@@ -196,16 +236,33 @@ namespace Xb.File.Tree
         /// <returns></returns>
         public virtual async Task ScanRecursiveAsync()
         {
-            if (this.Type == NodeType.File)
-                return;
-
+            var me = (Xb.File.Tree.INode)this;
+            var tree = this.Tree;
+            var fullPath = this.FullPath;
             await Task.Run(() =>
             {
-                this.Scan();
+                try
+                {
+                    me.Scan();
+                }
+                catch (IOException)
+                {
+                    //自分自身の実体要素が消えてしまった場合、何もしない。
+                    if (!tree.Paths.Contains(fullPath))
+                        return;
+
+                    //他、実体要素が置換された場合、また子要素走査に失敗した場合は
+                    //このまま処理を続ける。
+                    me = tree[fullPath];
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
             });
 
             //配下のディレクトリをループ
-            foreach (var node in this.Children.Where(node => node.Type == NodeType.Directory))
+            foreach (var node in me.Children.Where(node => node.Type == NodeType.Directory))
             {
                 await node.ScanRecursiveAsync();
             }
@@ -222,12 +279,10 @@ namespace Xb.File.Tree
             var result = new SerializableNode(this);
 
             var children = new List<SerializableNode>();
+
             foreach (var child in this.Children)
-            {
-                var childSerializable = child.GetSerializable();
-                childSerializable.Parent = result;
-                children.Add(childSerializable);
-            }
+                children.Add(child.GetSerializable());
+
             result.Children = children.ToArray();
 
             return result;
@@ -347,6 +402,7 @@ namespace Xb.File.Tree
         /// <param name="offset"></param>
         /// <param name="length"></param>
         /// <returns></returns>
+        /// <remarks>file size max 2GB</remarks>
         public virtual byte[] GetBytes(long offset, int length)
         {
             throw new NotImplementedException("Xb.File.Tree.NodeBase.GetBytes: Execute only subclass");
@@ -360,6 +416,7 @@ namespace Xb.File.Tree
         /// <param name="offset"></param>
         /// <param name="length"></param>
         /// <returns></returns>
+        /// <remarks>file size max 2GB</remarks>
         public virtual async Task<byte[]> GetBytesAsync(long offset, int length)
         {
             return await Task.Run(() => this.GetBytes(offset, length));
@@ -390,8 +447,8 @@ namespace Xb.File.Tree
 
 
         /// <summary>
-        /// Create child-node
-        /// 子ノードを追加する
+        /// Create real system element and child tree-node
+        /// 実システムに指定要素を追加し、自身に子ノードを追加する
         /// </summary>
         /// <param name="name"></param>
         public virtual INode CreateChild(string name
@@ -399,18 +456,28 @@ namespace Xb.File.Tree
         {
             throw new NotImplementedException("Xb.File.Tree.NodeBase.CreateChild: Execute only subclass");
 
+            //implement flow
             //1.Validate you need
-            //2.Create new INode-instance
-            //3.Call this.`AddChild` method
+            //  バリデーション(必要ならば)
+            //2.Generate elements corresponding to nodes for real systems
+            //  file on file-system, node on zip-archive, or so
+            //  実システム上に、渡し値に該当する要素を生成する。
+            //  ファイルシステム上のファイル、Zipアーカイブ上のノードなど
+            //3.Create new-child node, and passing this.`AddChild` method
+            //  INodeインスタンスを生成し、`AddChild`メソッドに渡す。
         }
 
-        
+
         /// <summary>
         /// Append new-node to child-list & tree
         /// 新規ノードを、子リストとTreeインスタンスに追加する
         /// </summary>
         /// <param name="node"></param>
-        protected virtual void AppendChild(INode node)
+        /// <remarks>
+        /// ここでは実システムに対する操作は行わない。
+        /// あくまでXb.File.Tree構造に対する操作のみを対象とする。
+        /// </remarks>
+        protected virtual void AddChild(INode node)
         {
             if (this.Type == NodeType.File)
                 throw new InvalidOperationException("Xb.File.Tree.NodeBase.AddChild: Not directory");
@@ -430,15 +497,24 @@ namespace Xb.File.Tree
 
 
         /// <summary>
-        /// Delete myself-node from tree
-        /// Treeから自分自身を削除する。
+        /// Delete real system elements and myself-node from tree
+        /// 実システムから自身に該当する要素を削除し、自分自身を破棄する。
         /// </summary>
         public virtual void Delete()
         {
             throw new NotImplementedException("Xb.File.Tree.NodeBase.Delete: Execute only subclass");
 
+            //implement flow
             //1.Validate you need
-            //2.Call this.`Dispose` method
+            //  バリデーション(必要ならば)
+            //2.If exists child-node, execute child-node.`Delete` method.
+            //  子ノードが存在するとき、子ノードの`Delete`メソッドを実行する。
+            //3.Remove elements corresponding to nodes for real system
+            //  file on file-system, node on zip-archive, or so
+            //  実システム上に自分自身に該当する要素が存在するとき、削除する。
+            //  ファイルシステム上のファイル、Zipアーカイブ上のノードなど
+            //3.Call this.`Dispose` method
+            //  自身の`Dispose`メソッドを実行する。
         }
 
 
@@ -472,7 +548,7 @@ namespace Xb.File.Tree
                 {
                     //直下の子ノードを破棄
                     foreach (var node in this.Children)
-                        node?.Delete();
+                        node?.Dispose();
 
                     this.Deleted?.Invoke(this, new NodeEventArgs(this));
 

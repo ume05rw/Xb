@@ -12,6 +12,36 @@ namespace TextXb
     {
         public DirectoryStructure BuildDirectoryTree()
         {
+            // baseDir
+            //   |
+            //   +-dir1
+            //   |   |
+            //   |   +-subdir1
+            //   |   |   |
+            //   |   |   +-subFile1.txt
+            //   |   |   |
+            //   |   |   +-subFile2.txt
+            //   |   |
+            //   |   +-file2.txt
+            //   |
+            //   +-dir2
+            //   |   |
+            //   |   +-マルチバイト∀
+            //   |
+            //   +-マルチバイトЙ
+            //   |   |
+            //   |   +-マルチバイトΠ.txt
+            //   |
+            //   +-dirNoData
+            //   |
+            //   +-file1.txt
+            //   |
+            //   +-file3.txt
+            //   |
+            //   +-マルチバイトΩ.txt
+
+
+
             var curDir = Directory.GetCurrentDirectory();
             
             var baseDir = Path.Combine(curDir, "baseDir");
@@ -74,10 +104,22 @@ namespace TextXb
             public string[] Directories { get; private set; }
             public string[] Files { get; private set; }
 
+            public Dictionary<string, string> Elements { get; }
+            
+
             public DirectoryStructure(string[] directories, string[] files)
             {
                 this.Directories = directories;
                 this.Files = files;
+
+                this.Elements = new Dictionary<string, string>();
+
+                foreach (var directory in this.Directories)
+                    this.Elements.Add(System.IO.Path.GetFileName(directory), directory);
+
+                foreach (var file in this.Files)
+                    this.Elements.Add(System.IO.Path.GetFileName(file), file);
+
             }
         }
     }

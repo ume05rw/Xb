@@ -47,11 +47,10 @@ namespace Xb.File.Tree
 
         /// <summary>
         /// Initialize
+        /// 初期化
         /// </summary>
-        /// <param name="rootPath"></param>
         /// <param name="rootNode"></param>
-        protected void Init(string rootPath
-                          , Xb.File.Tree.INode rootNode)
+        protected void Init(Xb.File.Tree.INode rootNode)
         {
             this.RootNode = rootNode;
 
@@ -100,13 +99,11 @@ namespace Xb.File.Tree
         /// Get matched one Node-object by fullpath
         /// パスが合致したNodeオブジェクトを返す
         /// </summary>
-        /// <param name="paths"></param>
+        /// <param name="path"></param>
         /// <returns></returns>
         public Xb.File.Tree.INode GetNode(string path)
         {
-            return this.NodeDictionary.ContainsKey(path)
-                        ? this.NodeDictionary[path]
-                        : null;
+            return this.NodeDictionary[path];
         }
 
         /// <summary>
@@ -117,9 +114,23 @@ namespace Xb.File.Tree
         /// <returns></returns>
         public Xb.File.Tree.INode[] GetNodes(ICollection<string> paths)
         {
-            return this.NodeDictionary.Where(pair => paths.Contains(pair.Key))
-                              .Select(pair => pair.Value)
-                              .ToArray();
+            var result = this.NodeDictionary.Where(pair => paths.Contains(pair.Key))
+                                            .Select(pair => pair.Value)
+                                            .ToArray();
+
+            //渡し値パス配列の中に、存在しないパスがあるとき、それを指摘して例外
+            if (result.Length != paths.Count)
+            {
+                var exists = result.Select(n => n.FullPath);
+                var errorPaths = new List<string>();
+                foreach (var path in paths)
+                    if (!exists.Contains(path))
+                        errorPaths.Add(path);
+
+                throw new InvalidOperationException($"Xb.File.Tree.TreeBase.GetNodes: Not found node [{ string.Join(", ", errorPaths)}]");
+            }
+
+            return result;
         }
 
 
@@ -175,7 +186,7 @@ namespace Xb.File.Tree
         /// <returns></returns>
         public static Xb.File.Tree.ITree GetTree(string path)
         {
-            throw new NotImplementedException("");
+            throw new NotImplementedException("Xb.File.Tree.TreeBase.GetTree: Execute only subclass");
         }
 
 
@@ -187,7 +198,7 @@ namespace Xb.File.Tree
         /// <returns></returns>
         public static async Task<Xb.File.Tree.ITree> GetTreeRecursiveAsync(string path)
         {
-            throw new NotImplementedException("");
+            throw new NotImplementedException("Xb.File.Tree.TreeBase.GetTreeRecursiveAsync: Execute only subclass");
         }
 
 

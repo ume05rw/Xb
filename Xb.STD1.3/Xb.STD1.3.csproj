@@ -45,8 +45,8 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Xb\App\Logger.cs" />
+    <Compile Include="Xb\File\FileNode.cs" />
     <Compile Include="Xb\File\FileTree.cs" />
-    <Compile Include="Xb\File\FileTree.Node.cs" />
     <Compile Include="Xb\File\Tree\INode.cs" />
     <Compile Include="Xb\File\Tree\ITree.cs" />
     <Compile Include="Xb\File\Tree\NodeBase.cs" />

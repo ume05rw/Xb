@@ -22,7 +22,7 @@ namespace TestsXb
             var isClientConnected = false;
             var isClientRecieved = false;
             var isClientSended = false;
-            var isClientDisconnected = false;
+            //var isClientDisconnected = false;
 
             var server = new Xb.Net.Tcp(1026);
             server.Recieved += (sender, ev) =>
@@ -62,7 +62,7 @@ namespace TestsXb
             client.Disconnected += (sender, ev) =>
             {
                 Assert.IsTrue(ev.EndPoint.ToString().IndexOf("127.0.0.1") >= 0);
-                isClientDisconnected = true;
+                //isClientDisconnected = true;
             };
 
             var task = Task.Run(() =>

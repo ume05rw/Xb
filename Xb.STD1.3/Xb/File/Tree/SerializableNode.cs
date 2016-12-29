@@ -9,12 +9,6 @@ namespace Xb.File.Tree
     public class SerializableNode
     {
         /// <summary>
-        /// Parent-node
-        /// 親ノード
-        /// </summary>
-        public SerializableNode Parent { get; set; }
-
-        /// <summary>
         /// Child-Nodes array
         /// 子ノード配列
         /// </summary>
@@ -46,7 +40,7 @@ namespace Xb.File.Tree
         /// Last update-date
         /// 最終更新日時
         /// </summary>
-        public DateTime UpdateDate { get; set; }
+        public string UpdateDate { get; set; }
 
         /// <summary>
         /// ルートノードか否か
@@ -61,7 +55,6 @@ namespace Xb.File.Tree
         /// <param name="node"></param>
         public SerializableNode(INode node)
         {
-            this.Parent = null;
             this.Children = new SerializableNode[]{};
             this.Name = node.Name;
             this.Extension = node.Extension;
@@ -69,7 +62,7 @@ namespace Xb.File.Tree
                             ? "File"
                             : "Directory";
             this.FullPath = node.FullPath;
-            this.UpdateDate = node.UpdateDate;
+            this.UpdateDate = node.UpdateDate.ToString("yyyy-MM-dd HH:mm:ss");
             this.IsRootNode = node.IsRootNode;
         }
     }

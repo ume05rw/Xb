@@ -48,6 +48,10 @@
       <HintPath>..\packages\MimeKit.1.10.0\lib\net451\MimeKit.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.IO.Compression, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
@@ -96,6 +100,10 @@
       <HintPath>..\packages\Xb.Core.1.0.8\lib\net45\Xb.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Xb.Core.Json, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Xb.Core.Json.1.0.1\lib\net45\Xb.Core.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -114,7 +122,7 @@
     <Compile Include="TestBase.cs" />
     <Compile Include="Xb\App\LoggerTests.cs" />
     <Compile Include="Xb\File\FileBase.cs" />
-    <Compile Include="Xb\File\TreeTests.cs" />
+    <Compile Include="Xb\File\FileTreeTests.cs" />
     <Compile Include="Xb\File\UtilTests.cs" />
     <Compile Include="Xb\File\ZipTests.cs" />
     <Compile Include="Xb\Net\MailTests.cs" />

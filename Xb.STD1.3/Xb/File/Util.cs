@@ -194,9 +194,10 @@ namespace Xb.File
         public static void WriteBytes(string fileName
                                     , byte[] bytes)
         {
-            if (bytes == null || bytes.Length <= 0)
-                return;
-
+            //bytesが空でも書き込みは実行する。
+            //中身を削除したい場合が有り得る。
+            bytes = bytes ?? new byte[] {};
+            
             using (var stream = new System.IO.FileStream(fileName
                                                        , FileMode.Create
                                                        , FileAccess.Write))

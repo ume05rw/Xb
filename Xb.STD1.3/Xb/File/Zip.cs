@@ -218,7 +218,7 @@ namespace Xb.File
         public void Delete(ZipArchiveEntry entry)
         {
             if (this.ReadOnly)
-                throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
+                throw new InvalidOperationException("Xb.File.Zip.Delete: read-only");
 
             if (!this._archive.Entries.Contains(entry))
                 throw new ArgumentOutOfRangeException(nameof(entry), $"Xb.File.Zip.Delete: entry not found [{entry}]");
@@ -266,7 +266,9 @@ namespace Xb.File
             if(this.ReadOnly)
                 throw new InvalidOperationException("Xb.File.Zip.WriteBytes: read-only");
 
+            bytes = bytes ?? new byte[] { };
             var fullName = entry.FullName;
+
             if (this._archive.Entries.Contains(entry))
                 this.Delete(entry);
 

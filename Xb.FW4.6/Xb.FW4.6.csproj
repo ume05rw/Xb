@@ -78,11 +78,11 @@
     <Compile Include="..\Xb.STD1.3\Xb\App\Logger.cs">
       <Link>Xb\App\Logger.cs</Link>
     </Compile>
+    <Compile Include="..\Xb.STD1.3\Xb\File\FileNode.cs">
+      <Link>Xb\File\FileNode.cs</Link>
+    </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\File\FileTree.cs">
       <Link>Xb\File\FileTree.cs</Link>
-    </Compile>
-    <Compile Include="..\Xb.STD1.3\Xb\File\FileTree.Node.cs">
-      <Link>Xb\File\FileTree.Node.cs</Link>
     </Compile>
     <Compile Include="..\Xb.STD1.3\Xb\File\Tree\INode.cs">
       <Link>Xb\File\Tree\INode.cs</Link>

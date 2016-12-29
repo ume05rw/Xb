@@ -15,6 +15,14 @@ namespace Xb.File.Tree
         Xb.File.Tree.INode RootNode { get; }
 
         /// <summary>
+        /// Node indexer
+        /// ノード要素インデクサ
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        Xb.File.Tree.INode this[string path] { get; }
+
+        /// <summary>
         /// Node-path array of all nodes
         /// ノードパス配列
         /// </summary>
