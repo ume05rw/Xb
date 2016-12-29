@@ -340,7 +340,7 @@ namespace TextXb
             Assert.AreEqual(10, tree.Paths.Length);
 
 
-            //ファイルノードを一つだけ破棄(※削除ではない)
+            //ファイルノードを一つだけ削除
             Assert.IsTrue(dir1.Children.Select(n => n.FullPath)
                 .Contains(structure.Elements["file2.txt"]));
             Assert.IsTrue(tree.Paths.Contains(structure.Elements["file2.txt"]));
@@ -361,7 +361,7 @@ namespace TextXb
 
 
 
-            //子ノードを持つディレクトリノードを一つだけ破棄(※削除ではない)
+            //子ノードを持つディレクトリノードを一つだけ削除
             Assert.AreEqual(7, tree.RootNode.Children.Length);
             Assert.AreEqual(9, tree.Paths.Length); // 9
             Assert.IsTrue(tree.Paths.Contains(structure.Elements["dir1"]));

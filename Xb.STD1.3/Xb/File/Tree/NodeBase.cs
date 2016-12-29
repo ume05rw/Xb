@@ -130,7 +130,7 @@ namespace Xb.File.Tree
         /// <param name="tree"></param>
         /// <param name="path"></param>
         protected NodeBase(Xb.File.Tree.ITree tree
-            , string path)
+                         , string path)
         {
             if (tree == null)
             {
@@ -161,9 +161,10 @@ namespace Xb.File.Tree
         /// <param name="updateDate"></param>
         /// <param name="type"></param>
         protected NodeBase(Xb.File.Tree.ITree tree
-            , string path
-            , DateTime updateDate
-            , NodeType type = NodeType.File)
+                         , string path
+                         , DateTime updateDate
+                         , NodeType type = NodeType.File
+                         , bool allowEmptyPath = false)
         {
             if (tree == null)
             {
@@ -171,11 +172,12 @@ namespace Xb.File.Tree
                 throw new ArgumentException($"Xb.File.TreeBase.Node.Constructor: tree null");
             }
 
-            if (string.IsNullOrEmpty(path))
+            if (!allowEmptyPath && string.IsNullOrEmpty(path))
             {
                 Xb.Util.Out($"Xb.File.Tree.NodeBase.Constructor: path null");
                 throw new ArgumentException($"Xb.File.TreeBase.Node.Constructor: path null");
             }
+            path = path ?? "";
 
             switch (type)
             {
@@ -198,9 +200,18 @@ namespace Xb.File.Tree
                         $"Xb.File.Tree.NodeBase.Constructor: undefined type[{type}]");
             }
 
-            this.Name = System.IO.Path.GetFileName(path);
+            if (string.IsNullOrEmpty(path))
+            {
+                this.Name = "";
+                this.ParentPath = "";
+            }
+            else
+            {
+                this.Name = System.IO.Path.GetFileName(path);
+                this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
+            }
+            
             this.UpdateDate = updateDate;
-            this.ParentPath = TreeBase.FormatPath(System.IO.Path.GetDirectoryName(path));
             this.FullPath = TreeBase.FormatPath(System.IO.Path.Combine(this.ParentPath, this.Name));
             this.Tree = tree;
             this.ChildPaths = new List<string>();
@@ -538,7 +549,7 @@ namespace Xb.File.Tree
 
 
         #region IDisposable Support
-        private bool disposedValue = false; // 重複する呼び出しを検出するには
+        protected bool disposedValue = false; // 重複する呼び出しを検出するには
 
         protected virtual void Dispose(bool disposing)
         {

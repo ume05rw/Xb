@@ -124,7 +124,7 @@
     <Compile Include="Xb\File\FileBase.cs" />
     <Compile Include="Xb\File\FileTreeTests.cs" />
     <Compile Include="Xb\File\UtilTests.cs" />
-    <Compile Include="Xb\File\ZipTests.cs" />
+    <Compile Include="Xb\File\ZipTreeTests.cs" />
     <Compile Include="Xb\Net\MailTests.cs" />
     <Compile Include="Xb\Net\TcpTests.cs" />
   </ItemGroup>

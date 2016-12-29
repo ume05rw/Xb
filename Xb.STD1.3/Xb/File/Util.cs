@@ -64,7 +64,7 @@ namespace Xb.File
                                                        , FileMode.Open
                                                        , FileAccess.Read))
             {
-                result = Xb.File.Util.GetBytes(stream);
+                result = Xb.Byte.GetBytes(stream);
             }
 
             return result;
@@ -72,50 +72,13 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Get file-bytes array
-        /// </summary>
-        /// <param name="readableStream"></param>
-        /// <returns></returns>
-        public static byte[] GetBytes(Stream readableStream)
-        {
-            if (readableStream == null)
-                throw new ArgumentNullException(nameof(readableStream), "Xb.File.Util.GetBytes: readableStream null");
-
-            if(!readableStream.CanRead)
-                throw new ArgumentException("Xb.File.Util.GetBytes: stream cannot read");
-
-            var memStream = new MemoryStream();
-            var buffer = new byte[Xb.Byte.BufferSize];
-
-            int size;
-            while ((size = readableStream.Read(buffer, 0, buffer.Length)) > 0)
-                memStream.Write(buffer, 0, size);
-
-            buffer = null;
-
-            return memStream.ToArray();
-        }
-
-
-        /// <summary>
         /// Get file-bytes array on async
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public async static Task<byte[]> GetBytesAsync(string fileName)
+        public static async Task<byte[]> GetBytesAsync(string fileName)
         {
             return await Task.Run(() => Xb.File.Util.GetBytes(fileName));
-        }
-
-
-        /// <summary>
-        /// Get file-bytes array on async
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        public async static Task<byte[]> GetBytesAsync(Stream readableStream)
-        {
-            return await Task.Run(() => Xb.File.Util.GetBytes(readableStream));
         }
 
 
@@ -137,7 +100,7 @@ namespace Xb.File
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public async static Task<string> GetTextAsync(string fileName)
+        public static async Task<string> GetTextAsync(string fileName)
         {
             return await Task.Run(() => Xb.File.Util.GetText(fileName));
         }
@@ -208,50 +171,6 @@ namespace Xb.File
 
 
         /// <summary>
-        /// Write byte-array to stream
-        /// </summary>
-        /// <param name="writableStream"></param>
-        /// <param name="bytes"></param>
-        public static void WriteBytes(Stream writableStream
-                                    , byte[] bytes)
-        {
-            if (!writableStream.CanWrite)
-                throw new ArgumentException("Xb.File.Util.WriteBytes: stream cannot write");
-
-            if (bytes == null || bytes.Length <= 0)
-                return;
-
-            writableStream.Write(bytes, 0, bytes.Length);
-        }
-
-
-        /// <summary>
-        /// Write byte-array to file on async
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <param name="bytes"></param>
-        /// <returns></returns>
-        public async static Task WriteBytesAsync(string fileName
-                                               , byte[] bytes)
-        {
-            await Task.Run(() => Xb.File.Util.WriteBytes(fileName, bytes));
-        }
-
-
-        /// <summary>
-        /// Write byte-array to stream on async
-        /// </summary>
-        /// <param name="writableStream"></param>
-        /// <param name="bytes"></param>
-        /// <returns></returns>
-        public async static Task WriteBytesAsync(Stream writableStream
-                                               , byte[] bytes)
-        {
-            await Task.Run(() => Xb.File.Util.WriteBytes(writableStream, bytes));
-        }
-
-
-        /// <summary>
         /// Write text to file
         /// </summary>
         /// <param name="fileName"></param>
@@ -280,6 +199,68 @@ namespace Xb.File
                                               , Encoding encoding = null)
         {
             await Task.Run(() => Xb.File.Util.WriteText(fileName, text, encoding));
+        }
+
+
+
+
+        /// <summary>
+        /// Zip directory
+        /// 渡し値フォルダをzipファイル化する
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <remarks>
+        /// https://msdn.microsoft.com/ja-jp/library/system.io.compression.zipfile(v=vs.110).aspx
+        /// </remarks>
+        public static void ToZip(string directory
+                               , Encoding encoding = null)
+        {
+            if (!Directory.Exists(directory))
+                throw new DirectoryNotFoundException($"Xb.File.Zip.ToZip: directory not found [{directory}]");
+
+            encoding = encoding ?? Encoding.UTF8;
+
+            var dirInfo = new DirectoryInfo(directory);
+            var parentDirectory = dirInfo.Parent.FullName;
+            var zipFileName = Path.Combine(parentDirectory, $"{dirInfo.Name}.zip");
+
+            Xb.File.Util.Delete(zipFileName);
+
+            ZipFile.CreateFromDirectory(dirInfo.FullName
+                                      , zipFileName
+                                      , CompressionLevel.Fastest
+                                      , true
+                                      , encoding);
+        }
+
+
+        /// <summary>
+        /// Unzip archive
+        /// zipファイルを解凍する
+        /// </summary>
+        /// <param name="zipFileName"></param>
+        public static void Unzip(string zipFileName
+                               , Encoding encoding = null)
+        {
+            if (!System.IO.File.Exists(zipFileName))
+                throw new FileNotFoundException($"Xb.File.Zip.Unzip: zip-file not found [{zipFileName}]");
+
+            encoding = encoding ?? Encoding.UTF8;
+
+            var fileInfo = new System.IO.FileInfo(zipFileName);
+            var parentDirectory = fileInfo.DirectoryName;
+            var unzipedDirectory
+                = Path.Combine(parentDirectory
+                             , fileInfo.Name
+                                       .Substring(0
+                                                , fileInfo.Name.Length
+                                                    - fileInfo.Extension.Length));
+
+            Xb.File.Util.Delete(unzipedDirectory);
+
+            ZipFile.ExtractToDirectory(fileInfo.FullName
+                                     , parentDirectory
+                                     , encoding);
         }
     }
 }

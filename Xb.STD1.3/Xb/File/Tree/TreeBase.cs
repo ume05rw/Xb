@@ -184,7 +184,7 @@ namespace Xb.File.Tree
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static Xb.File.Tree.ITree GetTree(string path)
+        protected static Xb.File.Tree.ITree GetTree(string path)
         {
             throw new NotImplementedException("Xb.File.Tree.TreeBase.GetTree: Execute only subclass");
         }
@@ -196,7 +196,7 @@ namespace Xb.File.Tree
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static async Task<Xb.File.Tree.ITree> GetTreeRecursiveAsync(string path)
+        protected static async Task<Xb.File.Tree.ITree> GetTreeRecursiveAsync(string path)
         {
             throw new NotImplementedException("Xb.File.Tree.TreeBase.GetTreeRecursiveAsync: Execute only subclass");
         }
@@ -224,7 +224,7 @@ namespace Xb.File.Tree
 
 
         #region IDisposable Support
-        private bool disposedValue = false; // 重複する呼び出しを検出するには
+        protected bool disposedValue = false; // 重複する呼び出しを検出するには
 
 
         protected virtual void Dispose(bool disposing)

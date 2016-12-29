@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Xb.File
 {
-    public class FileTree : Xb.File.Tree.TreeBase
+    public partial class FileTree : Xb.File.Tree.TreeBase
     {
         /// <summary>
         /// Constructor
@@ -15,7 +15,7 @@ namespace Xb.File
         /// <param name="rootPath"></param>
         protected FileTree(string rootPath)
         {
-            var rootNode = new Xb.File.FileNode(this, rootPath);
+            var rootNode = new Xb.File.FileTree.FileNode(this, rootPath);
             this.Init(rootNode);
         }
 

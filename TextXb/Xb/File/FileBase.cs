@@ -27,10 +27,10 @@ namespace TextXb
             //   +-dir2
             //   |   |
             //   |   +-マルチバイト∀
+            //   |        |
+            //   |        +-マルチバイトΠ.txt
             //   |
             //   +-マルチバイトЙ
-            //   |   |
-            //   |   +-マルチバイトΠ.txt
             //   |
             //   +-dirNoData
             //   |
@@ -39,8 +39,10 @@ namespace TextXb
             //   +-file3.txt
             //   |
             //   +-マルチバイトΩ.txt
-
-
+            //
+            // ディレクトリ：7
+            // ファイル　　：7
+            // 計　　　　　：14
 
             var curDir = Directory.GetCurrentDirectory();
             
