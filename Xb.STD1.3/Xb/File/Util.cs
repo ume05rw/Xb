@@ -59,15 +59,7 @@ namespace Xb.File
             if(!System.IO.File.Exists(fileName))
                 throw new FileNotFoundException($"Xb.File.Util.GetFileBytes: file not found [{fileName}]");
 
-            byte[] result;
-            using (var stream = new System.IO.FileStream(fileName
-                                                       , FileMode.Open
-                                                       , FileAccess.Read))
-            {
-                result = Xb.Byte.GetBytes(stream);
-            }
-
-            return result;
+            return System.IO.File.ReadAllBytes(fileName);
         }
 
 
@@ -117,22 +109,10 @@ namespace Xb.File
         {
             if (!System.IO.File.Exists(fileName))
                 throw new FileNotFoundException($"Xb.File.Util.GetFileBytes: file not found [{fileName}]");
+            
+            encoding = encoding ?? Encoding.UTF8;
 
-            if(encoding == null)
-                throw new ArgumentNullException(nameof(encoding), $"Xb.File.Util.GetFileBytes: encoding null");
-
-            string result = "";
-            using (var stream = new System.IO.FileStream(fileName
-                                                       , FileMode.Open
-                                                       , FileAccess.Read))
-            {
-                using (var reader = new StreamReader(stream, encoding))
-                {
-                    result = reader.ReadToEnd();
-                }
-            }
-
-            return result;
+            return System.IO.File.ReadAllText(fileName, encoding);
         }
 
 
@@ -160,13 +140,7 @@ namespace Xb.File
             //bytesが空でも書き込みは実行する。
             //中身を削除したい場合が有り得る。
             bytes = bytes ?? new byte[] {};
-            
-            using (var stream = new System.IO.FileStream(fileName
-                                                       , FileMode.Create
-                                                       , FileAccess.Write))
-            {
-                stream.Write(bytes, 0, bytes.Length);
-            }
+            System.IO.File.WriteAllBytes(fileName, bytes);
         }
 
 

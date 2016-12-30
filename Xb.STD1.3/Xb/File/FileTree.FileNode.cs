@@ -186,7 +186,7 @@ namespace Xb.File
                 if (this.Type != NodeType.File)
                     throw new InvalidOperationException("Xb.File.FileTree.FileNode.GetBytes: Not file");
 
-                return Xb.File.Util.GetBytes(this.FullPath);
+                return System.IO.File.ReadAllBytes(this.FullPath);
             }
 
 
@@ -201,14 +201,12 @@ namespace Xb.File
             public override byte[] GetBytes(long offset, int length)
             {
                 this.ValidateMyself();
-
+                
                 if (this.Type != NodeType.File)
                     throw new InvalidOperationException("Xb.File.FileTree.FileNode.GetBytes: Not file");
 
                 var memStream = new MemoryStream();
-                using (var stream = new System.IO.FileStream(this.FullPath
-                                                           , FileMode.Open
-                                                           , FileAccess.Read))
+                using (var stream = System.IO.File.OpenRead(this.FullPath))
                 {
                     stream.Seek(offset, SeekOrigin.Begin);
 

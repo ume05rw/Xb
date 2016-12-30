@@ -216,7 +216,7 @@ namespace Xb.File
 
 
         /// <summary>
-        /// 
+        /// Disposing Stream, ZipArchive
         /// </summary>
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)

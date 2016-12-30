@@ -255,7 +255,7 @@ namespace Xb.File
             }
 
             /// <summary>
-            /// 
+            /// Disposing Entry
             /// </summary>
             /// <param name="disposing"></param>
             protected override void Dispose(bool disposing)

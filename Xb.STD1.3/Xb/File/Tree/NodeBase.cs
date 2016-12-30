@@ -127,6 +127,15 @@ namespace Xb.File.Tree
         /// Constructor
         /// コンストラクタ
         /// </summary>
+        protected NodeBase()
+        {
+        }
+
+
+        /// <summary>
+        /// Constructor
+        /// コンストラクタ
+        /// </summary>
         /// <param name="tree"></param>
         /// <param name="path"></param>
         protected NodeBase(Xb.File.Tree.ITree tree
@@ -484,21 +493,24 @@ namespace Xb.File.Tree
         /// 新規ノードを、子リストとTreeインスタンスに追加する
         /// </summary>
         /// <param name="node"></param>
+        /// <param name="childPath"></param>
         /// <remarks>
         /// ここでは実システムに対する操作は行わない。
         /// あくまでXb.File.Tree構造に対する操作のみを対象とする。
         /// </remarks>
-        protected virtual void AddChild(INode node)
+        protected virtual void AddChild(INode node
+                                      , string childPath = null)
         {
             if (this.Type == NodeType.File)
                 throw new InvalidOperationException("Xb.File.Tree.NodeBase.AddChild: Not directory");
 
-            var childPath = TreeBase.FormatPath(System.IO.Path.Combine(this.FullPath, node.Name));
+            childPath = childPath 
+                            ?? TreeBase.FormatPath(System.IO.Path.Combine(this.FullPath, node.Name));
 
             if (this.ChildPaths.Contains(childPath))
                 throw new InvalidOperationException($"Xb.File.Tree.NodeBase.AddChild: Exist node [{childPath}]");
 
-            if(childPath != node.FullPath)
+            if (childPath != node.FullPath)
                 throw new InvalidOperationException($"Xb.File.Tree.NodeBase.AddChild: Invalid relationship");
 
             node.Deleted += this.OnChildRemoved;
