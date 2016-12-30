@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更してください。
 [assembly: AssemblyTitle("Xb")]
-[assembly: AssemblyDescription("Ready to Xamarin & .NET Core, Basic-Function Library. Mail-Sending, File System Access, Mail-Sending, Tcp-Sockets, and more...")]
+[assembly: AssemblyDescription("Ready to Xamarin & .NET Core, Basic Library Assy.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Do-Be's")]
 [assembly: AssemblyProduct("Xb")]
