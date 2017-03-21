@@ -1,21 +1,21 @@
 ﻿{
   "supports": {},
   "dependencies": {
-    "MailKit": "1.10.1",
+    "MailKit": "1.12.0",
     "Microsoft.NETCore.Portable.Compatibility": "1.0.1",
-    "NETStandard.Library": "1.6.0",
+    "NETStandard.Library": "1.6.1",
     "System.Data.Common": "4.3.0",
     "System.IO.Compression": "4.3.0",
     "System.IO.Compression.ZipFile": "4.3.0",
-    "System.IO.FileSystem": "4.0.1",
-    "System.IO.FileSystem.Primitives": "4.0.1",
+    "System.IO.FileSystem": "4.3.0",
+    "System.IO.FileSystem.Primitives": "4.3.0",
     "System.Net.NameResolution": "4.3.0",
     "System.Net.Security": "4.3.0",
     "System.Net.Sockets": "4.3.0",
-    "Xb.Core": "1.0.8",
-    "Xb.Core.Json": "1.0.1.1",
-    "Xb.Db": "1.0.3",
-    "Xb.File.Tree": "1.0.0"
+    "Xb.Core": "1.0.13",
+    "Xb.Core.Json": "1.0.4",
+    "Xb.Db": "1.0.9",
+    "Xb.File.Tree": "1.0.8"
   },
   "frameworks": {
     "netstandard1.3": {}
