@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -187,10 +188,38 @@ namespace Xb.Net
             get
             {
                 return this._remoteSockets
-                    .Select(pair => pair.Value.RemoteEndPoint)
-                    .ToArray();
+                           .Select(pair => pair.Value.RemoteEndPoint)
+                           .ToArray();
             }
         }
+
+        /// <summary>
+        /// Socket Buffer Size for Send
+        /// </summary>
+        public int SendBufferSize
+        {
+            get { return this._sendBufferSize; }
+            set
+            {
+                this._sendBufferSize = value;
+                this._localSocket.SendBufferSize = this._sendBufferSize;
+            }
+        }
+        private int _sendBufferSize = 8192;
+
+        /// <summary>
+        /// Socekt Buffer Size for Recieve
+        /// </summary>
+        public int RecieveBufferSize
+        {
+            get { return this._recieveBufferSize; }
+            set
+            {
+                this._recieveBufferSize = value;
+                this._localSocket.ReceiveBufferSize = this._recieveBufferSize;
+            }
+        }
+        private int _recieveBufferSize = 8192;
 
 
         /// <summary>
@@ -268,6 +297,7 @@ namespace Xb.Net
 
                 ev.Completed += this.OnCompleted;
                 this._localSocket.ConnectAsync(ev);
+                this._localSocket.ReceiveBufferSize = this.RecieveBufferSize;
 
                 this.SetTimer(ev, ev.RemoteEndPoint);
             }
@@ -303,14 +333,19 @@ namespace Xb.Net
             //ソケットを生成する。
             //IPv4, v6両対応の全ローカルアドレスをListenする
             //http://dobon.net/vb/dotnet/internet/udpclient.html
-            //http://dobon.net/vb/dotnet/internet/udpclient.html
-            var endPoint = new System.Net.IPEndPoint(System.Net.IPAddress.IPv6Any, listenPort);
-            this._localSocket = new System.Net.Sockets.Socket(endPoint.Address.AddressFamily
-                , System.Net.Sockets.SocketType.Stream
-                , System.Net.Sockets.ProtocolType.Tcp);
-            this._localSocket.SetSocketOption(System.Net.Sockets.SocketOptionLevel.IPv6
-                , System.Net.Sockets.SocketOptionName.IPv6Only
-                , 0);
+            // > IPv4とIPv6の両方を可能にするには、IPAddress.IPv6Anyを使用し、
+            // > さらにSocket.SetSocketOptionメソッドでIPv6Onlyを0にします。
+            // > そして、その後バインドを行います。
+            var endPoint = new IPEndPoint(IPAddress.IPv6Any, listenPort);
+            this._localSocket = new Socket(endPoint.Address.AddressFamily
+                                         , SocketType.Stream
+                                         , ProtocolType.Tcp);
+            this._localSocket.SetSocketOption(SocketOptionLevel.IPv6
+                                            , SocketOptionName.IPv6Only
+                                            , 0);
+
+            this._localSocket.ReceiveBufferSize = this.RecieveBufferSize;
+            this._localSocket.SendBufferSize = this.SendBufferSize;
 
             try
             {
@@ -361,8 +396,10 @@ namespace Xb.Net
 
                     var evConnect = new SocketAsyncEventArgs();
                     evConnect.Completed += this.OnCompleted;
-                    evConnect.SetBuffer(new byte[1024], 0, 1024);
+                    evConnect.SetBuffer(new byte[this.RecieveBufferSize], 0, this.RecieveBufferSize);
                     ev.ConnectSocket.ReceiveAsync(evConnect);
+
+                    this.RemoveTimer(ev);
 
                     //fire event
                     this.Connected?.Invoke(this, new ActionEventArgs(socket.RemoteEndPoint));
@@ -393,8 +430,7 @@ namespace Xb.Net
                         }
 
                         //fire event
-                        this.Disconnected?.Invoke(this
-                            , new ActionEventArgs(socket.RemoteEndPoint));
+                        this.Disconnected?.Invoke(this, new ActionEventArgs(socket.RemoteEndPoint));
 
                         socket.Dispose();
                         ev.Dispose();
@@ -403,17 +439,15 @@ namespace Xb.Net
                     }
 
                     var bytes = ev.Buffer.Skip(ev.Offset)
-                        .Take(ev.BytesTransferred)
-                        .ToArray();
-                    var asText = Encoding.ASCII.GetString(bytes);
+                                         .Take(ev.BytesTransferred)
+                                         .ToArray();
+                    //var asText = Encoding.ASCII.GetString(bytes);
                     //Debug.WriteLine($"Received: {ev.BytesTransferred} bytes: \"{asText}\"");
 
                     socket.ReceiveAsync(ev);
-
+                    
                     //fire event
-                    this.Recieved?.Invoke(this
-                        , new RecieveEventArgs(bytes
-                            , socket.RemoteEndPoint));
+                    this.Recieved?.Invoke(this, new RecieveEventArgs(bytes, socket.RemoteEndPoint));
 
                     break;
 
@@ -425,6 +459,8 @@ namespace Xb.Net
 
                     if (ev.SocketError != SocketError.Success)
                         throw new Exception("Xb.Net.Tcp.OnCompleted: Send failure");
+
+                    this.RemoveTimer(ev);
 
                     this.Sended?.Invoke(this, new ActionEventArgs(socket.RemoteEndPoint));
 
@@ -463,7 +499,7 @@ namespace Xb.Net
                     //Set Recieve event for Accepted socket.
                     var newEv = new SocketAsyncEventArgs();
                     newEv.Completed += this.OnCompleted;
-                    newEv.SetBuffer(new byte[1024], 0, 1024);
+                    newEv.SetBuffer(new byte[this.SendBufferSize], 0, this.SendBufferSize);
                     clientSocket.ReceiveAsync(newEv);
 
                     //fire event
@@ -525,6 +561,7 @@ namespace Xb.Net
             //sending target sockets
             var targetSockets = new List<Socket>();
 
+            //pick send-target
             switch (this.Role)
             {
                 case RoleType.Client:
@@ -550,15 +587,15 @@ namespace Xb.Net
                     {
                         //order target, pick one
                         targetSockets.Add(this._remoteSockets
-                            .Where(pair => pair.Key == endPoint)
-                            .Select(pair => pair.Value)
-                            .First());
+                                              .Where(pair => pair.Key == endPoint)
+                                              .Select(pair => pair.Value)
+                                              .First());
                     }
                     else
                     {
                         //no-order, pick all
                         targetSockets.AddRange(this._remoteSockets
-                            .Select(pair => pair.Value));
+                                                   .Select(pair => pair.Value));
                     }
 
                     break;
@@ -566,6 +603,7 @@ namespace Xb.Net
                     throw new InvalidOperationException($"Xb.Net.Tcp.Send: undefined Xb.Net.Tcp.RoleType [{this.Role}]");
             }
 
+            //send
             try
             {
                 foreach (var socket in targetSockets)
@@ -573,6 +611,7 @@ namespace Xb.Net
                     var ev = new SocketAsyncEventArgs();
                     ev.Completed += this.OnCompleted;
                     ev.SetBuffer(bytes, 0, bytes.Length);
+                    socket.SendBufferSize = this.SendBufferSize;
                     socket.SendAsync(ev);
 
                     this.SetTimer(ev, socket.RemoteEndPoint);
@@ -612,7 +651,7 @@ namespace Xb.Net
         /// <param name="ev"></param>
         /// <param name="endPoint"></param>
         private void SetTimer(SocketAsyncEventArgs ev
-            , EndPoint endPoint)
+                            , EndPoint endPoint)
         {
             var timerSet = new TimerSet();
             timerSet.EventArgs = ev;
@@ -648,9 +687,13 @@ namespace Xb.Net
         {
             if (this._timeoutTimers.ContainsKey(ev))
             {
-                var timerSet = this._timeoutTimers[ev];
+                try
+                {
+                    this._timeoutTimers[ev]?.Dispose();
+                }
+                catch (Exception){}
+
                 this._timeoutTimers.Remove(ev);
-                timerSet.Dispose();
             }
         }
 
