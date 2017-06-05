@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net.Sockets;
 
 namespace Xb.Net
 {
@@ -82,22 +84,146 @@ namespace Xb.Net
 
 
         /// <summary>
+        /// Get ip addresses on local devices(deprecated)
+        /// ローカルデバイスのIPアドレスを全て取得する。
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>
+        /// Please switch to GetLocalIpAddresses
+        /// </remarks>
+        public static System.Net.IPAddress[] GetIpAddresses(bool excludeLoopback = false)
+        {
+            return Util.GetLocalIpAddresses(excludeLoopback);
+        }
+
+
+        /// <summary>
         /// ローカルデバイスのIPアドレスを全て取得する。
         /// </summary>
         /// <returns></returns>
         /// <remarks></remarks>
-        public static System.Net.IPAddress[] GetIpAddresses(bool excludeLoopback = false)
+        public static System.Net.IPAddress[] GetLocalIpAddresses(bool excludeLoopback = false)
         {
-            var addresses = Task.Run(() => System.Net.Dns.GetHostAddressesAsync(System.Net.Dns.GetHostName()))
-                                .GetAwaiter()
-                                .GetResult();
-            
-            if (addresses == null)
-                return new System.Net.IPAddress[]{};
+            //ローカルホスト名の解決に失敗することがあるため、
+            //NetworkInterfaceからデバイス情報を取得するように修正。
+            var addresses = NetworkInterface.GetAllNetworkInterfaces()
+                                            .SelectMany(itf => itf.GetIPProperties().UnicastAddresses)
+                                            .Select(uaddr => uaddr.Address);
+            //var addresses = Task.Run(() => System.Net.Dns.GetHostAddressesAsync(System.Net.Dns.GetHostName()))
+            //                    .GetAwaiter()
+            //                    .GetResult();
 
             return excludeLoopback
                 ? addresses.Where(add => !IPAddress.IsLoopback(add)).ToArray()
-                : addresses;
+                : addresses.ToArray();
+        }
+
+
+        /// <summary>
+        /// ローカルデバイスのIPv4アドレスを全て取得する。
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public static System.Net.IPAddress[] GetLocalV4Addresses(bool excludeLoopback = false)
+        {
+            var addresses = NetworkInterface.GetAllNetworkInterfaces()
+                                            .SelectMany(itf => itf.GetIPProperties().UnicastAddresses)
+                                            .Select(uaddr => uaddr.Address)
+                                            .Where(addr => addr.AddressFamily == AddressFamily.InterNetwork);
+            
+            return excludeLoopback
+                ? addresses.Where(add => !IPAddress.IsLoopback(add)).ToArray()
+                : addresses.ToArray();
+        }
+
+
+        /// <summary>
+        /// ローカルデバイスのIPv6アドレスを全て取得する。
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public static System.Net.IPAddress[] GetLocalV6Addresses(bool excludeLoopback = false)
+        {
+            var addresses = NetworkInterface.GetAllNetworkInterfaces()
+                                            .SelectMany(itf => itf.GetIPProperties().UnicastAddresses)
+                                            .Select(uaddr => uaddr.Address)
+                                            .Where(addr => addr.AddressFamily == AddressFamily.InterNetworkV6);
+            
+            return excludeLoopback
+                ? addresses.Where(add => !IPAddress.IsLoopback(add)).ToArray()
+                : addresses.ToArray();
+        }
+
+
+        /// <summary>
+        /// ローカルデバイスのIPv4プライベートアドレスを全て取得する。
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public static System.Net.IPAddress[] GetLocalV4PrivateAddresses()
+        {
+            if (Util._privateAddressHeaders == null)
+                Util.InitPrivateAddressHeaders();
+
+            return NetworkInterface.GetAllNetworkInterfaces()
+                                   .SelectMany(itf => itf.GetIPProperties().UnicastAddresses)
+                                   .Select(uaddr => uaddr.Address)
+                                   .Where(addr => addr.AddressFamily == AddressFamily.InterNetwork
+                                                  && !IPAddress.IsLoopback(addr)
+                                                  && Util._privateAddressHeaders
+                                                         .Any(paddr => addr.ToString().StartsWith(paddr)))
+                                   .ToArray();
+        }
+
+
+        private static string[] _privateAddressHeaders = null;
+        /// <summary>
+        /// IPv4プライベートアドレス判定用プレフィクス文字列を生成する。
+        /// </summary>
+        private static void InitPrivateAddressHeaders()
+        {
+            var list = new List<string>()
+            {
+                "10.",
+                "192."
+            };
+
+            for (var i = 16; i <= 31; i++)
+                list.Add($"172.{i}.");
+
+            Util._privateAddressHeaders = list.ToArray();
+        }
+
+
+        /// <summary>
+        /// 渡し値アドレスがIPv4プライベートアドレスか否かを判定する。
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        public static bool IsV4PrivateAddress(string address)
+        {
+            if (Util._privateAddressHeaders == null)
+                Util.InitPrivateAddressHeaders();
+
+            return Util._privateAddressHeaders.Any(paddr => address.StartsWith(paddr));
+        }
+
+
+        /// <summary>
+        /// 渡し値アドレスがIPv4プライベートアドレスか否かを判定する。
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        public static bool IsV4PrivateAddress(IPAddress address)
+        {
+            if (Util._privateAddressHeaders == null)
+                Util.InitPrivateAddressHeaders();
+
+            //IPv4でないならfalse
+            if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                return false;
+
+            return Util._privateAddressHeaders.Any(paddr => address.ToString().StartsWith(paddr));
         }
 
 
@@ -111,12 +237,24 @@ namespace Xb.Net
         {
             if (address == null)
                 return false;
+            
+            return Xb.Net.Util.GetIpAddresses()
+                              .Any(add => add.ToString() == address);
+        }
 
-            var addresses = Xb.Net.Util.GetIpAddresses();
-            if (addresses == null)
+
+        /// <summary>
+        /// 渡し値アドレスが、ローカルデバイスが保持しているIPアドレスのどれかに合致するか否かを検証する。
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        public static bool IsMyIpAddress(IPAddress address)
+        {
+            if (address == null)
                 return false;
-
-            return addresses.Any(add => add.ToString() == address);
+            
+            return Xb.Net.Util.GetIpAddresses()
+                              .Any(add => add.ToString() == address.ToString());
         }
 
 
